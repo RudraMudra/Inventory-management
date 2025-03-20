@@ -1,30 +1,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { Layout, Typography, Pagination, message, Input, Card, Menu, Button, Spin, Modal, Form, Space, InputNumber, Select } from 'antd';
-import { StockOutlined, DownloadOutlined, BarChartOutlined, PieChartOutlined, BulbOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined } from '@ant-design/icons';
+import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space } from 'antd';
+import { StockOutlined, BarChartOutlined, PieChartOutlined, BulbOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined } from '@ant-design/icons';
 import ItemForm from './components/ItemForm';
 import ItemTable from './components/ItemTable';
 import ItemChart from './components/ItemChart';
 import Login from './components/Login';
-import debounce from 'lodash/debounce';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Dashboard from './components/Dashboard';
+import WarehouseModal from './components/WarehouseModal';
+import TransferModal from './components/TransferModal';
+import ItemsModal from './components/ItemsModal';
+import { useAuth } from './hooks/useAuth';
+import { useItems } from './hooks/useItems';
+import { useWarehouses } from './hooks/useWarehouses';
+import { useWarehouseItems } from './hooks/useWarehouseItems';
+import { useCharts } from './hooks/useCharts';
+import { useMutations } from './hooks/useMutations';
+import { themeStyles } from './constants/themeStyles';
+import { itemsPerPage, apiUrl } from './constants/config';
+import { handleExportCSV } from './utils/exportCSV';
 import './App.css';
+import axios from 'axios';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
 
 function App() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
   const [view, setView] = useState('table');
   const [theme, setTheme] = useState('light');
   const [collapsed, setCollapsed] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const [filters, setFilters] = useState({ minQuantity: '', maxQuantity: '' });
   const [isWarehouseModalVisible, setIsWarehouseModalVisible] = useState(false);
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
   const [isItemsModalVisible, setIsItemsModalVisible] = useState(false);
@@ -32,210 +35,96 @@ function App() {
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
   const [warehouseForm] = Form.useForm();
   const [transferForm] = Form.useForm();
-  const itemsPerPage = 15;
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-  const queryClient = useQueryClient();
 
-  // Fetch items
-  const { data: itemsData, isLoading } = useQuery({
-    queryKey: ['items', currentPage, searchTerm, sortBy, sortOrder, filters],
-    queryFn: async () => {
-      const params = { page: currentPage, limit: itemsPerPage, search: searchTerm, sortBy, sortOrder };
-      if (filters.minQuantity) params.minQuantity = filters.minQuantity;
-      if (filters.maxQuantity) params.maxQuantity = filters.maxQuantity;
-      const res = await axios.get(`${apiUrl}/items`, { params });
-      return res.data;
-    },
-    enabled: isAuthenticated && view === 'table',
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
+  // Authentication
+  const { isAuthenticated, userRole, handleLogin, handleLogout } = useAuth();
 
-  // Fetch warehouses
-  const { data: warehousesData, isLoading: warehousesLoading } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/warehouses`);
-      return res.data;
-    },
-    enabled: isAuthenticated && view === 'warehouses',
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
+  // Items
+  const {
+    itemsData,
+    isLoading,
+    currentPage,
+    localSearchTerm,
+    filters,
+    handleSearchChange,
+    handleSort,
+    handleFilterChange,
+    handlePageChange,
+  } = useItems(isAuthenticated, view, apiUrl, itemsPerPage);
 
-  // Fetch total quantities per warehouse
-  const { data: warehouseQuantities = [], error: warehouseQuantitiesError, isLoading: warehouseQuantitiesLoading } = useQuery({
-    queryKey: ['warehouseQuantities'],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/warehouse-quantities`);
-      return res.data;
-    },
-    enabled: isAuthenticated && view === 'warehouses',
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-    onError: (err) => {
-      console.error('Error fetching warehouse quantities:', err);
-      message.error(`Failed to fetch warehouse quantities: ${err.response?.data?.message || err.message}`);
-    },
-  });
+  // Warehouses
+  const {
+    warehousesData,
+    warehousesLoading,
+    warehouseQuantities,
+    warehouseQuantitiesError,
+    warehouseQuantitiesLoading,
+  } = useWarehouses(isAuthenticated, view, apiUrl);
 
-  // Fetch items for the selected warehouse
-  const { data: warehouseItems = [], isLoading: warehouseItemsLoading, error: warehouseItemsError } = useQuery({
-    queryKey: ['warehouseItems', selectedWarehouse],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/by-warehouse/${selectedWarehouse}`);
-      return res.data;
-    },
-    enabled: isAuthenticated && !!selectedWarehouse && isItemsModalVisible,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-    onError: (err) => {
-      console.error('Error fetching items for warehouse:', err);
-      message.error(`Failed to fetch items for warehouse: ${err.response?.data?.message || err.message}`);
-    },
-  });
+  // Warehouse Items
+  const { warehouseItems, warehouseItemsLoading, warehouseItemsError } = useWarehouseItems(
+    isAuthenticated,
+    selectedWarehouse,
+    isItemsModalVisible,
+    apiUrl
+  );
 
-  // Fetch bar chart data
-  const { data: barData, isLoading: barLoading, error: barError } = useQuery({
-    queryKey: ['barChart'],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/items/bar-chart`);
-      return res.data;
-    },
-    enabled: isAuthenticated && view === 'bar',
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
+  // Charts
+  const { barData, barLoading, barError, pieData, pieLoading, pieError } = useCharts(isAuthenticated, view, apiUrl);
 
-  // Fetch pie chart data
-  const { data: pieData, isLoading: pieLoading, error: pieError } = useQuery({
-    queryKey: ['pieChart'],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/items/pie-chart`);
-      return res.data;
-    },
-    enabled: isAuthenticated && view === 'pie',
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
+  // Mutations
+  const {
+    addMutation,
+    updateMutation,
+    deleteMutation,
+    transferMutation,
+    warehouseMutation,
+    deleteWarehouseMutation,
+    logMutation,
+  } = useMutations(apiUrl, view, itemsPerPage, currentPage, localSearchTerm, 'name', 'asc', filters);
 
-  // Add item mutation
-  const addMutation = useMutation({
-    mutationFn: (values) => axios.post(`${apiUrl}/items`, values),
-    onSuccess: (res) => {
-      if (view === 'table') {
-        queryClient.setQueryData(['items', currentPage, searchTerm, sortBy, sortOrder, filters], (oldData) => {
-          const newItems = [...(oldData?.items || []), res.data].slice(-itemsPerPage);
-          return { ...oldData, items: newItems, totalItems: (oldData?.totalItems || 0) + 1 };
-        });
+  // Low Stock Check
+  useEffect(() => {
+    const checkLowStock = async () => {
+      try {
+        const res = await axios.get(`${apiUrl}/items/low-stock-alert`);
+        if (res.data.length > 0) {
+          message.warning(`Low stock on: ${res.data.map(item => item.name).join(', ')}`, 5);
+        }
+      } catch (err) {
+        console.error('Low stock check failed:', err);
       }
-      queryClient.invalidateQueries(['barChart']);
-      queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']);
-      message.success('Item added successfully', 2);
-    },
-    onError: (err) => {
-      message.error(`Failed to add item: ${err.response?.data?.message || err.message}`, 2);
-    },
-  });
+    };
+    const interval = setInterval(checkLowStock, 300000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Update item mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, updatedItem }) => axios.put(`${apiUrl}/items/${id}`, updatedItem),
-    onSuccess: (res) => {
-      if (view === 'table') {
-        queryClient.setQueryData(['items', currentPage, searchTerm, sortBy, sortOrder, filters], (oldData) => {
-          const newItems = oldData?.items.map(item => (item._id === res.data._id ? res.data : item)) || [];
-          return { ...oldData, items: newItems };
-        });
-      }
-      queryClient.invalidateQueries(['barChart']);
-      queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']);
-      message.success('Item updated', 2);
-    },
-    onError: (err) => {
-      message.error(`Failed to update item: ${err.response?.data?.message || err.message}`, 2);
-    },
-  });
-
-  // Delete item mutation
-  const deleteMutation = useMutation({
-    mutationFn: (id) => axios.delete(`${apiUrl}/items/${id}`),
-    onSuccess: () => {
-      if (view === 'table') {
-        queryClient.setQueryData(['items', currentPage, searchTerm, sortBy, sortOrder, filters], (oldData) => {
-          const newItems = oldData?.items.filter(item => item._id !== deleteMutation.variables) || [];
-          return { ...oldData, items: newItems, totalItems: (oldData?.totalItems || 0) - 1 };
-        });
-      }
-      queryClient.invalidateQueries(['barChart']);
-      queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']);
-      message.success('Item deleted', 2);
-    },
-    onError: (err) => {
-      message.error(`Failed to delete item: ${err.response?.data?.message || err.message}`, 2);
-    },
-  });
-
-  // Transfer item mutation
-  const transferMutation = useMutation({
-    mutationFn: async ({ itemId, fromWarehouse, toWarehouse, quantity }) => {
-      const res = await axios.post(`${apiUrl}/items/transfer`, { itemId, fromWarehouse, toWarehouse, quantity });
-      return res.data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries(['items']);
-      queryClient.invalidateQueries(['barChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']);
-      message.success(
-        `Transferred ${variables.quantity} units of ${data.itemName} from ${variables.fromWarehouse} to ${variables.toWarehouse}`,
-        2
-      );
-    },
-    onError: (err) => {
-      const errorMessage = err.response?.data?.message || 'An unexpected error occurred';
-      message.error(`Failed to transfer item: ${errorMessage}`, 2);
-    },
-  });
-
-  // Create or update warehouse mutation
-  const warehouseMutation = useMutation({
-    mutationFn: async (values) => {
-      if (values._id) {
-        const res = await axios.put(`${apiUrl}/warehouses/${values._id}`, values);
-        return res.data;
-      } else {
-        const res = await axios.post(`${apiUrl}/warehouses`, values);
-        return res.data;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['warehouses']);
-      message.success('Warehouse saved successfully', 2);
-      warehouseForm.resetFields();
-      setIsWarehouseModalVisible(false);
-    },
-    onError: (err) => {
-      message.error(`Failed to save warehouse: ${err.response?.data?.message || err.message}`, 2);
-    },
-  });
-
-  // Delete warehouse mutation
-  const deleteWarehouseMutation = useMutation({
-    mutationFn: async (id) => {
-      const res = await axios.delete(`${apiUrl}/warehouses/${id}`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['warehouses']);
-      message.success('Warehouse deleted successfully', 2);
-    },
-    onError: (err) => {
-      message.error(`Failed to delete warehouse: ${err.response?.data?.message || err.message}`, 2);
-    },
-  });
+  // Log Mutations
+  useEffect(() => {
+    const logAction = (action, itemId) => {
+      logMutation.mutate({ action, itemId, user: localStorage.getItem('userId') || 'anonymous', timestamp: new Date() });
+    };
+    const originalAdd = addMutation.mutate;
+    const originalUpdate = updateMutation.mutate;
+    const originalDelete = deleteMutation.mutate;
+    addMutation.mutate = (values) => {
+      logAction('add', values._id);
+      originalAdd(values);
+    };
+    updateMutation.mutate = (args) => {
+      logAction('update', args.id);
+      originalUpdate(args);
+    };
+    deleteMutation.mutate = (id) => {
+      logAction('delete', id);
+      originalDelete(id);
+    };
+    return () => {
+      addMutation.mutate = originalAdd;
+      updateMutation.mutate = originalUpdate;
+      deleteMutation.mutate = originalDelete;
+    };
+  }, [addMutation, updateMutation, deleteMutation, logMutation]);
 
   const handleTransfer = useCallback((itemId) => {
     const item = itemsData?.items.find(i => i._id === itemId);
@@ -279,119 +168,9 @@ function App() {
     setSelectedWarehouse(null);
   };
 
-  const logMutation = useMutation({
-    mutationFn: (logData) => axios.post(`${apiUrl}/logs`, logData),
-    onError: (err) => console.error('Failed to log action:', err),
-  });
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    if (token && role) {
-      setIsAuthenticated(true);
-      setUserRole(role);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      setIsAuthenticated(false);
-      setUserRole(null);
-      delete axios.defaults.headers.common['Authorization'];
-      message.error('Please log in to continue');
-    }
-  }, []);
-
-  useEffect(() => {
-    const checkLowStock = async () => {
-      try {
-        const res = await axios.get(`${apiUrl}/items/low-stock-alert`);
-        if (res.data.length > 0) {
-          message.warning(`Low stock on: ${res.data.map(item => item.name).join(', ')}`, 5);
-        }
-      } catch (err) {
-        console.error('Low stock check failed:', err);
-      }
-    };
-    const interval = setInterval(checkLowStock, 300000);
-    return () => clearInterval(interval);
-  }, [apiUrl]);
-
-  useEffect(() => {
-    const logAction = (action, itemId) => {
-      logMutation.mutate({ action, itemId, user: localStorage.getItem('userId') || 'anonymous', timestamp: new Date() });
-    };
-    const originalAdd = addMutation.mutate;
-    const originalUpdate = updateMutation.mutate;
-    const originalDelete = deleteMutation.mutate;
-    addMutation.mutate = (values) => {
-      logAction('add', values._id);
-      originalAdd(values);
-    };
-    updateMutation.mutate = (args) => {
-      logAction('update', args.id);
-      originalUpdate(args);
-    };
-    deleteMutation.mutate = (id) => {
-      logAction('delete', id);
-      originalDelete(id);
-    };
-    return () => {
-      addMutation.mutate = originalAdd;
-      updateMutation.mutate = originalUpdate;
-      deleteMutation.mutate = originalDelete;
-    };
-  }, [addMutation, updateMutation, deleteMutation, logMutation]);
-
-  const handleExportCSV = async () => {
-    try {
-      const response = await axios.get(`${apiUrl}/items/export`, {
-        responseType: 'blob',
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'items.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      message.success('CSV exported successfully');
-    } catch (err) {
-      message.error(`Failed to export CSV: ${err.response?.data?.message || err.message}`);
-      console.error('Export error:', err);
-    }
-  };
-
   const handleAdd = useCallback((values) => addMutation.mutate(values), [addMutation]);
   const handleUpdate = useCallback((id, updatedItem) => updateMutation.mutate({ id, updatedItem }), [updateMutation]);
   const handleDelete = useCallback((id) => deleteMutation.mutate(id), [deleteMutation]);
-  const handlePageChange = useCallback((page) => setCurrentPage(page), []);
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    setCurrentPage(1);
-  };
-
-  const debouncedHandleSearchChange = debounce((e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setCurrentPage(1);
-  }, 300);
-
-  const handleSearchChange = (e) => {
-    setLocalSearchTerm(e.target.value);
-    debouncedHandleSearchChange(e);
-  };
-
-  const handleSort = useCallback((sorter) => {
-    if (sorter.order) {
-      setSortBy(sorter.field);
-      setSortOrder(sorter.order === 'descend' ? 'desc' : 'asc');
-    } else {
-      setSortBy('name');
-      setSortOrder('asc');
-    }
-    setCurrentPage(1);
-    queryClient.invalidateQueries(['items']);
-  }, [queryClient]);
 
   const showWarehouseModal = (record = null) => {
     if (record) {
@@ -405,6 +184,8 @@ function App() {
   const handleWarehouseOk = () => {
     warehouseForm.validateFields().then((values) => {
       warehouseMutation.mutate(values);
+      setIsWarehouseModalVisible(false);
+      warehouseForm.resetFields();
     });
   };
 
@@ -419,9 +200,9 @@ function App() {
       case '2': setView('bar'); break;
       case '3': setView('pie'); break;
       case '4': setView('warehouses'); break;
-      case '5': handleExportCSV(); break;
-      case '6': toggleTheme(); break;
-      case '7': handleLogout(); break;
+      // case '5': handleExportCSV(apiUrl); break;
+      case '5': toggleTheme(); break;
+      case '6': handleLogout(); break;
       default: break;
     }
   };
@@ -429,31 +210,8 @@ function App() {
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
   const toggleCollapse = () => setCollapsed(!collapsed);
 
-  const handleLogin = (role) => {
-    setIsAuthenticated(true);
-    setUserRole(role);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    setIsAuthenticated(false);
-    setUserRole(null);
-    delete axios.defaults.headers.common['Authorization'];
-    message.success('Logged out successfully');
-  };
-
-  const themeStyles = {
-    light: { background: '#fff7e6', sider: '#b7eb8f', header: '#b7eb8f', text: '#000', card: '#fff', input: '#fff' },
-    dark: { background: '#001529', sider: '#001529', header: '#001529', text: '#fff', card: '#1f1f1f', input: '#2d2d2d' },
-  };
-
   const canEdit = userRole === 'admin' || userRole === 'manager';
   const canViewCharts = userRole !== 'viewer';
-
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
 
   const items = itemsData?.items || [];
   const totalItems = itemsData?.totalItems || 0;
@@ -466,25 +224,6 @@ function App() {
       totalQuantity: quantityData.totalQuantity || 0,
     };
   });
-
-  const Dashboard = ({ itemsData, userRole }) => {
-    const totalItems = itemsData?.totalItems || 0;
-    const lowStockCount = itemsData?.items.filter(item => item.quantity <= item.lowStockThreshold).length || 0;
-    const totalQuantity = itemsData?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
-
-    return (
-      <Card title="Inventory Overview" style={{ marginBottom: '24px', background: themeStyles[theme].card }}>
-        <p>Total Items: {totalItems}</p>
-        <p>Total Quantity: {totalQuantity}</p>
-        <p>Low Stock Items: {lowStockCount}</p>
-        {userRole === 'admin' && (
-          <Button icon={<DownloadOutlined />} onClick={handleExportCSV} style={{ marginTop: '16px' }}>
-            Export Summary
-          </Button>
-        )}
-      </Card>
-    );
-  };
 
   const warehouseColumns = [
     {
@@ -500,8 +239,9 @@ function App() {
             background: 'none',
             border: 'none',
             padding: 0,
-            font: 'icon',
+            font: 'inherit',
             cursor: 'pointer',
+            textDecoration: 'underline',
           }}
           type="button"
           aria-label={`View items in ${text}`}
@@ -569,6 +309,10 @@ function App() {
     },
   ];
 
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
       <Sider
@@ -593,11 +337,10 @@ function App() {
           <Menu.Item key="2" icon={<BarChartOutlined />}>Bar Chart</Menu.Item>
           <Menu.Item key="3" icon={<PieChartOutlined />}>Pie Chart</Menu.Item>
           <Menu.Item key="4" icon={<HomeOutlined />}>Warehouses</Menu.Item>
-          {/* <Menu.Item key="5" icon={<DownloadOutlined />}>Export to CSV</Menu.Item> */}
-          <Menu.Item key="6" icon={<BulbOutlined />}>
+          <Menu.Item key="5" icon={<BulbOutlined />}>
             {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
           </Menu.Item>
-          <Menu.Item key="7" icon={<LogoutOutlined />}>Logout</Menu.Item>
+          <Menu.Item key="6" icon={<LogoutOutlined />}>Logout</Menu.Item>
         </Menu>
       </Sider>
       <Layout>
@@ -620,13 +363,13 @@ function App() {
           <Title level={2} style={{ color: themeStyles[theme].text, margin: 0, fontSize: '28px' }}>
             {view === 'table' ? 'Inventory Management' :
               view === 'bar' ? 'Quantity by Warehouse' :
-                view === 'pie' ? 'Stock Status Distribution' :
-                  'Warehouse Management'}
+              view === 'pie' ? 'Stock Status Distribution' :
+              'Warehouse Management'}
           </Title>
           <div style={{ width: '24px' }} />
         </Header>
         <Content style={{ padding: '24px', minWidth: window.innerWidth < 768 ? '100%' : 'auto' }}>
-          <Card
+          <div
             style={{
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -638,10 +381,17 @@ function App() {
             }}
           >
             {isLoading && (
-              <Spin size="large" tip="Loading inventory data..." style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                Loading inventory data...
+              </div>
             )}
             {isAuthenticated && !isLoading && view === 'table' && (
-              <Dashboard itemsData={itemsData} userRole={userRole} />
+              <Dashboard
+                itemsData={itemsData}
+                userRole={userRole}
+                handleExportCSV={() => handleExportCSV(apiUrl)}
+                theme={themeStyles[theme]}
+              />
             )}
             {view === 'table' && (
               <>
@@ -693,14 +443,14 @@ function App() {
             )}
             {view === 'bar' && canViewCharts && (
               <>
-                {barLoading && <Spin size="large" tip="Loading bar chart..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />}
+                {barLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading bar chart...</div>}
                 {barError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading bar chart: {barError.message}</div>}
                 {!barLoading && !barError && <ItemChart type="bar" barData={barData} pieData={{}} />}
               </>
             )}
             {view === 'pie' && canViewCharts && (
               <>
-                {pieLoading && <Spin size="large" tip="Loading pie chart..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />}
+                {pieLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading pie chart...</div>}
                 {pieError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading pie chart: {pieError.message}</div>}
                 {!pieLoading && !pieError && <ItemChart type="pie" barData={{}} pieData={pieData} />}
               </>
@@ -708,10 +458,14 @@ function App() {
             {view === 'warehouses' && (
               <>
                 {warehousesLoading && (
-                  <Spin size="large" tip="Loading warehouses..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
+                  <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>
+                    Loading warehouses...
+                  </div>
                 )}
                 {warehouseQuantitiesLoading && (
-                  <Spin size="large" tip="Loading warehouse quantities..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
+                  <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>
+                    Loading warehouse quantities...
+                  </div>
                 )}
                 {warehouseQuantitiesError && (
                   <div style={{ textAlign: 'center', color: 'red', margin: '20px 0' }}>
@@ -744,7 +498,7 @@ function App() {
                       </div>
                     )}
                     <ItemTable
-                      items={warehousesWithQuantities.filter(warehouse => warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()))}
+                      items={warehousesWithQuantities.filter(warehouse => warehouse.name.toLowerCase().includes(localSearchTerm.toLowerCase()))}
                       columns={warehouseColumns}
                       onUpdate={userRole === 'admin' ? (id, updatedItem) => showWarehouseModal(updatedItem) : () => message.error('Access denied')}
                       onDelete={userRole === 'admin' ? (id) => deleteWarehouseMutation.mutate(id) : () => message.error('Access denied')}
@@ -758,110 +512,37 @@ function App() {
             {!canViewCharts && view !== 'table' && view !== 'warehouses' && (
               <div style={{ textAlign: 'center', color: themeStyles[theme].text }}>Access denied to charts</div>
             )}
-          </Card>
+          </div>
         </Content>
       </Layout>
-      <Modal
-        title={warehouseForm.getFieldValue('_id') ? 'Edit Warehouse' : 'Add Warehouse'}
-        open={isWarehouseModalVisible}
+      <WarehouseModal
+        isVisible={isWarehouseModalVisible}
         onOk={handleWarehouseOk}
         onCancel={handleWarehouseCancel}
-      >
-        <Form form={warehouseForm} layout="vertical">
-          <Form.Item name="_id" hidden>
-            <Input />
-          </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Please input the warehouse name!' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="location" label="Location">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-      <Modal
-        title="Transfer Item"
-        open={isTransferModalVisible}
+        warehouseForm={warehouseForm}
+      />
+      <TransferModal
+        isVisible={isTransferModalVisible}
         onOk={handleTransferOk}
         onCancel={handleTransferCancel}
-      >
-        <Form form={transferForm} layout="vertical">
-          <Form.Item
-            name="fromWarehouse"
-            label="Source Warehouse"
-            rules={[{ required: true, message: 'Please input the source warehouse!' }]}
-          >
-            <Input disabled />
-          </Form.Item>
-          <Form.Item
-            name="toWarehouse"
-            label="Destination Warehouse"
-            rules={[{ required: true, message: 'Please select the destination warehouse!' }]}
-          >
-            <Select placeholder="Select a warehouse">
-              {warehouses.map(warehouse => (
-                <Select.Option key={warehouse._id} value={warehouse.name}>
-                  {warehouse.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="quantity"
-            label="Quantity to Transfer"
-            rules={[
-              { required: true, message: 'Please input the quantity!' },
-              { type: 'number', min: 1, message: 'Quantity must be greater than 0!' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  const item = items.find(i => i._id === selectedItemId);
-                  if (!item || !value) return Promise.resolve();
-                  if (value > item.quantity) {
-                    return Promise.reject(new Error(`Cannot transfer more than available quantity (${item.quantity})!`));
-                  }
-                  return Promise.resolve();
-                },
-              }),
-            ]}
-          >
-            <InputNumber min={1} placeholder="e.g., 5" style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
-      <Modal
-        title={`Items in ${selectedWarehouse}`}
-        open={isItemsModalVisible}
+        transferForm={transferForm}
+        items={items}
+        selectedItemId={selectedItemId}
+        warehouses={warehouses}
+      />
+      <ItemsModal
+        isVisible={isItemsModalVisible}
         onCancel={handleItemsModalCancel}
-        footer={null}
-        width={800}
-      >
-        {warehouseItemsLoading && (
-          <Spin size="large" tip="Loading items..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
-        )}
-        {warehouseItemsError && (
-          <div style={{ textAlign: 'center', color: 'red', margin: '20px 0' }}>
-            Error loading items: {warehouseItemsError.message}
-          </div>
-        )}
-        {!warehouseItemsLoading && !warehouseItemsError && (
-          <>
-            {warehouseItems.length === 0 ? (
-              <div style={{ textAlign: 'center', margin: '20px 0' }}>
-                No items found in this warehouse.
-              </div>
-            ) : (
-              <ItemTable
-                items={warehouseItems}
-                columns={itemColumns}
-                onUpdate={canEdit ? handleUpdate : () => message.error('Access denied')}
-                onDelete={canEdit ? handleDelete : () => message.error('Access denied')}
-                onTransfer={canEdit ? handleTransfer : () => message.error('Access denied')}
-                canEdit={canEdit}
-              />
-            )}
-          </>
-        )}
-      </Modal>
+        selectedWarehouse={selectedWarehouse}
+        warehouseItems={warehouseItems}
+        warehouseItemsLoading={warehouseItemsLoading}
+        warehouseItemsError={warehouseItemsError}
+        itemColumns={itemColumns}
+        canEdit={canEdit}
+        handleUpdate={handleUpdate}
+        handleDelete={handleDelete}
+        handleTransfer={handleTransfer}
+      />
     </Layout>
   );
 }
