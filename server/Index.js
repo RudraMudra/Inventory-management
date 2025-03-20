@@ -33,7 +33,7 @@ app.use(express.json());
 connectDB();
 
 // Define routes
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the StockFlow API' });
 });
 app.use('/api', itemRoutes);
