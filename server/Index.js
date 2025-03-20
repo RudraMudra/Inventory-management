@@ -13,7 +13,7 @@ const app = express();
 // Configure CORS
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'https://inventory-management-client.vercel.app', // Add your deployed frontend URL
+  process.env.FRONTEND_URL || 'https://inventory-management-client.vercel.app',
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -33,7 +33,7 @@ app.use(express.json());
 connectDB();
 
 // Define routes
-app.get('/api', (req, res) => {
+app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the StockFlow API' });
 });
 app.use('/api', itemRoutes);
