@@ -1,0 +1,45 @@
+.gradient-button {
+  background: linear-gradient(45deg, #b7eb8f, #95de64) !important;
+  border: none !important;
+  color: #000 !important;
+  border-radius: 4px !important;
+  transition: all 0.3s;
+}
+.gradient-button:hover {
+  background: linear-gradient(45deg, #d9f7be, #b7eb8f) !important;
+  transform: translateY(-1px);
+}
+.dark .gradient-button {
+  background: linear-gradient(45deg, #1890ff, #40c4ff) !important;
+  color: #fff !important;
+}
+.dark .gradient-button:hover {
+  background: linear-gradient(45deg, #40a9ff, #69c0ff) !important;
+}
+.ant-btn-dangerous.gradient-button {
+  background: linear-gradient(45deg, #ff4d4f, #ff7875) !important;
+  color: #fff !important;
+}
+.ant-btn-dangerous.gradient-button:hover {
+  background: linear-gradient(45deg, #ff7875, #ff4d4f) !important;
+}
+
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    width: 0 !important;
+    min-width: 0 !important;
+  }
+  .ant-layout-content {
+    margin-left: 0 !important;
+  }
+  .chart-container {
+    width: 100% !important;
+  }
+}
+
+.ant-input::placeholder {
+  color: rgba(0, 0, 0, 0.5) !important; /* Adjust for light theme */
+}
+.ant-input-dark::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important; /* Adjust for dark theme */
+}

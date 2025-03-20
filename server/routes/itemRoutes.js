@@ -1,0 +1,53 @@
+const express = require('express');
+const Item = require('../models/Item');
+const router = express.Router();
+const { getItems, 
+    createItem, 
+    updateItem, 
+    deleteItem, 
+    exportItems, 
+    getBarChartData, 
+    getPieChartData,
+    getLowStockAlert,
+    createLog,
+    transferItem
+ } = require('../controllers/itemController');
+const { authMiddleware, roleMiddleware } = require('../middlewares/auth');
+
+router.get('/items', authMiddleware, getItems);
+router.post('/items', authMiddleware, roleMiddleware(['admin']), createItem);
+router.put('/items/:id', authMiddleware, roleMiddleware(['admin']), updateItem);
+router.delete('/items/:id', authMiddleware, roleMiddleware(['admin']), deleteItem);
+router.get('/items/export', authMiddleware, exportItems);
+router.get('/items/bar-chart', authMiddleware, getBarChartData);
+router.get('/items/pie-chart', authMiddleware, getPieChartData);
+router.get('/items/low-stock-alert', authMiddleware, getLowStockAlert);
+router.post('/logs', authMiddleware, createLog);
+router.post('/items/transfer', authMiddleware, transferItem);
+
+
+router.get('/warehouse-quantities', authMiddleware, async (req, res) => {
+    try {
+      const quantities = await Item.aggregate([
+        {
+          $group: {
+            _id: '$warehouse', // Group by warehouse name
+            totalQuantity: { $sum: '$quantity' }, // Sum the quantities
+          },
+        },
+        {
+          $project: {
+            warehouse: '$_id',
+            totalQuantity: 1,
+            _id: 0,
+          },
+        },
+      ]);
+      res.json(quantities);
+    } catch (err) {
+      console.error('Error fetching warehouse quantities:', err);
+      res.status(500).json({ message: 'Failed to fetch warehouse quantities', error: err.message });
+    }
+  });
+
+module.exports = router;
