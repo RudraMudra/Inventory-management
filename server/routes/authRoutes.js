@@ -21,7 +21,7 @@ router.post('/login', async (req, res)=> {
         if(!user || !(await user.comparePassword(password))){
             return res.status(400).json({message: 'Invalid credentials'});
         }
-        const token = jwt.sign({id: user._id, role: user.role},'your_jwt_secret', { expiresIn: '1h' });
+        const token = jwt.sign({id: user._id, role: user.role},process.env.JWT_SECRET, { expiresIn: '1h' });
         res.json({token, role: user.role});
     } catch(err){
         res.status(500).json({message: "Internal server error"});
