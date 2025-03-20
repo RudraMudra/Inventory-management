@@ -50,4 +50,16 @@ router.get('/warehouse-quantities', authMiddleware, async (req, res) => {
     }
   });
 
+  router.get('/by-warehouse/:warehouseName', authMiddleware, async (req, res) => {
+    try {
+      const { warehouseName } = req.params;
+      const items = await Item.find({ warehouse: warehouseName });
+      res.json(items);
+    } catch (err) {
+      console.error('Error fetching items by warehouse:', err);
+      res.status(500).json({ message: 'Failed to fetch items by warehouse', error: err.message });
+    }
+  });
+  
+
 module.exports = router;

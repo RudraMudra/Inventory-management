@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Layout, Typography, Pagination, message, Input, Card, Menu, Button, Spin, Modal, Form, Space, InputNumber } from 'antd';
+import { Layout, Typography, Pagination, message, Input, Card, Menu, Button, Spin, Modal, Form, Space, InputNumber, Select } from 'antd';
 import { StockOutlined, DownloadOutlined, BarChartOutlined, PieChartOutlined, BulbOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined } from '@ant-design/icons';
 import ItemForm from './components/ItemForm';
 import ItemTable from './components/ItemTable';
@@ -26,8 +26,10 @@ function App() {
   const [userRole, setUserRole] = useState(null);
   const [filters, setFilters] = useState({ minQuantity: '', maxQuantity: '' });
   const [isWarehouseModalVisible, setIsWarehouseModalVisible] = useState(false);
-  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false); // New state for transfer modal
+  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
+  const [isItemsModalVisible, setIsItemsModalVisible] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null);
   const [warehouseForm] = Form.useForm();
   const [transferForm] = Form.useForm();
   const itemsPerPage = 15;
@@ -62,10 +64,10 @@ function App() {
   });
 
   // Fetch total quantities per warehouse
-  const { data: warehouseQuantities = [], error: warehouseQuantitiesError } = useQuery({
+  const { data: warehouseQuantities = [], error: warehouseQuantitiesError, isLoading: warehouseQuantitiesLoading } = useQuery({
     queryKey: ['warehouseQuantities'],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/warehouse-quantities`); // Changed to /warehouses/warehouse-quantities
+      const res = await axios.get(`${apiUrl}/warehouse-quantities`);
       return res.data;
     },
     enabled: isAuthenticated && view === 'warehouses',
@@ -74,6 +76,22 @@ function App() {
     onError: (err) => {
       console.error('Error fetching warehouse quantities:', err);
       message.error(`Failed to fetch warehouse quantities: ${err.response?.data?.message || err.message}`);
+    },
+  });
+
+  // Fetch items for the selected warehouse
+  const { data: warehouseItems = [], isLoading: warehouseItemsLoading, error: warehouseItemsError } = useQuery({
+    queryKey: ['warehouseItems', selectedWarehouse],
+    queryFn: async () => {
+      const res = await axios.get(`${apiUrl}/by-warehouse/${selectedWarehouse}`);
+      return res.data;
+    },
+    enabled: isAuthenticated && !!selectedWarehouse && isItemsModalVisible,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+    onError: (err) => {
+      console.error('Error fetching items for warehouse:', err);
+      message.error(`Failed to fetch items for warehouse: ${err.response?.data?.message || err.message}`);
     },
   });
 
@@ -113,7 +131,7 @@ function App() {
       }
       queryClient.invalidateQueries(['barChart']);
       queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']); // Invalidate warehouse quantities on item add
+      queryClient.invalidateQueries(['warehouseQuantities']);
       message.success('Item added successfully', 2);
     },
     onError: (err) => {
@@ -133,7 +151,7 @@ function App() {
       }
       queryClient.invalidateQueries(['barChart']);
       queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']); // Invalidate warehouse quantities on item update
+      queryClient.invalidateQueries(['warehouseQuantities']);
       message.success('Item updated', 2);
     },
     onError: (err) => {
@@ -153,7 +171,7 @@ function App() {
       }
       queryClient.invalidateQueries(['barChart']);
       queryClient.invalidateQueries(['pieChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']); // Invalidate warehouse quantities on item delete
+      queryClient.invalidateQueries(['warehouseQuantities']);
       message.success('Item deleted', 2);
     },
     onError: (err) => {
@@ -170,7 +188,7 @@ function App() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries(['items']);
       queryClient.invalidateQueries(['barChart']);
-      queryClient.invalidateQueries(['warehouseQuantities']); // Invalidate warehouse quantities on transfer
+      queryClient.invalidateQueries(['warehouseQuantities']);
       message.success(
         `Transferred ${variables.quantity} units of ${data.itemName} from ${variables.fromWarehouse} to ${variables.toWarehouse}`,
         2
@@ -186,11 +204,9 @@ function App() {
   const warehouseMutation = useMutation({
     mutationFn: async (values) => {
       if (values._id) {
-        // Update warehouse
         const res = await axios.put(`${apiUrl}/warehouses/${values._id}`, values);
         return res.data;
       } else {
-        // Create warehouse
         const res = await axios.post(`${apiUrl}/warehouses`, values);
         return res.data;
       }
@@ -222,9 +238,11 @@ function App() {
   });
 
   const handleTransfer = useCallback((itemId) => {
-    setSelectedItemId(itemId); // Store the item ID
-    setIsTransferModalVisible(true); // Open the modal
-  }, []);
+    const item = itemsData?.items.find(i => i._id === itemId);
+    setSelectedItemId(itemId);
+    setIsTransferModalVisible(true);
+    transferForm.setFieldsValue({ fromWarehouse: item?.warehouse });
+  }, [itemsData, transferForm]);
 
   const handleTransferOk = () => {
     transferForm.validateFields().then((values) => {
@@ -249,6 +267,16 @@ function App() {
   const handleTransferCancel = () => {
     setIsTransferModalVisible(false);
     transferForm.resetFields();
+  };
+
+  const handleViewItems = (warehouseName) => {
+    setSelectedWarehouse(warehouseName);
+    setIsItemsModalVisible(true);
+  };
+
+  const handleItemsModalCancel = () => {
+    setIsItemsModalVisible(false);
+    setSelectedWarehouse(null);
   };
 
   const logMutation = useMutation({
@@ -282,7 +310,7 @@ function App() {
         console.error('Low stock check failed:', err);
       }
     };
-    const interval = setInterval(checkLowStock, 300000); // Check every 5 minutes
+    const interval = setInterval(checkLowStock, 300000);
     return () => clearInterval(interval);
   }, [apiUrl]);
 
@@ -431,7 +459,6 @@ function App() {
   const totalItems = itemsData?.totalItems || 0;
   const warehouses = warehousesData || [];
 
-  // Map warehouse quantities to warehouses
   const warehousesWithQuantities = warehouses.map(warehouse => {
     const quantityData = warehouseQuantities.find(q => q.warehouse.toLowerCase() === warehouse.name.toLowerCase()) || { totalQuantity: 0 };
     return {
@@ -460,14 +487,36 @@ function App() {
   };
 
   const warehouseColumns = [
-    { title: 'Name', dataIndex: 'name', key: 'name', width: '25%' },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      width: '25%',
+      render: (text) => (
+        <button
+          onClick={() => handleViewItems(text)}
+          style={{
+            color: themeStyles[theme].text,
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            font: 'icon',
+            cursor: 'pointer',
+          }}
+          type="button"
+          aria-label={`View items in ${text}`}
+        >
+          {text}
+        </button>
+      ),
+    },
     { title: 'Location', dataIndex: 'location', key: 'location', width: '25%' },
     {
       title: 'Total Quantity',
       dataIndex: 'totalQuantity',
       key: 'totalQuantity',
       sorter: (a, b) => a.totalQuantity - b.totalQuantity,
-      width: '20%'
+      width: '20%',
     },
     { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', render: (text) => new Date(text).toLocaleString(), width: '20%' },
     {
@@ -500,6 +549,26 @@ function App() {
     },
   ];
 
+  const itemColumns = [
+    { title: 'Name', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
+    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', sorter: (a, b) => a.quantity - b.quantity },
+    { title: 'Low Stock Threshold', dataIndex: 'lowStockThreshold', key: 'lowStockThreshold' },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (_, record) => {
+        const isLowStock = record.quantity <= record.lowStockThreshold;
+        return (
+          <span style={{ color: isLowStock ? 'red' : 'green' }}>
+            {isLowStock ? 'Low Stock' : 'In Stock'}
+          </span>
+        );
+      },
+      sorter: (a, b) => (a.quantity <= a.lowStockThreshold ? -1 : 1) - (b.quantity <= b.lowStockThreshold ? -1 : 1),
+    },
+  ];
+
   return (
     <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
       <Sider
@@ -524,7 +593,7 @@ function App() {
           <Menu.Item key="2" icon={<BarChartOutlined />}>Bar Chart</Menu.Item>
           <Menu.Item key="3" icon={<PieChartOutlined />}>Pie Chart</Menu.Item>
           <Menu.Item key="4" icon={<HomeOutlined />}>Warehouses</Menu.Item>
-          <Menu.Item key="5" icon={<DownloadOutlined />}>Export to CSV</Menu.Item>
+          {/* <Menu.Item key="5" icon={<DownloadOutlined />}>Export to CSV</Menu.Item> */}
           <Menu.Item key="6" icon={<BulbOutlined />}>
             {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
           </Menu.Item>
@@ -641,6 +710,9 @@ function App() {
                 {warehousesLoading && (
                   <Spin size="large" tip="Loading warehouses..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
                 )}
+                {warehouseQuantitiesLoading && (
+                  <Spin size="large" tip="Loading warehouse quantities..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
+                )}
                 {warehouseQuantitiesError && (
                   <div style={{ textAlign: 'center', color: 'red', margin: '20px 0' }}>
                     Error loading warehouse quantities: {warehouseQuantitiesError.message}
@@ -666,6 +738,11 @@ function App() {
                         style={{ width: '200px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
                       />
                     </div>
+                    {warehouseQuantities.length === 0 && (
+                      <div style={{ textAlign: 'center', color: themeStyles[theme].text, margin: '20px 0' }}>
+                        No items found in any warehouse.
+                      </div>
+                    )}
                     <ItemTable
                       items={warehousesWithQuantities.filter(warehouse => warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()))}
                       columns={warehouseColumns}
@@ -714,14 +791,20 @@ function App() {
             label="Source Warehouse"
             rules={[{ required: true, message: 'Please input the source warehouse!' }]}
           >
-            <Input placeholder="e.g., WH1" />
+            <Input disabled />
           </Form.Item>
           <Form.Item
             name="toWarehouse"
             label="Destination Warehouse"
-            rules={[{ required: true, message: 'Please input the destination warehouse!' }]}
+            rules={[{ required: true, message: 'Please select the destination warehouse!' }]}
           >
-            <Input placeholder="e.g., WH2" />
+            <Select placeholder="Select a warehouse">
+              {warehouses.map(warehouse => (
+                <Select.Option key={warehouse._id} value={warehouse.name}>
+                  {warehouse.name}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item
             name="quantity"
@@ -729,11 +812,55 @@ function App() {
             rules={[
               { required: true, message: 'Please input the quantity!' },
               { type: 'number', min: 1, message: 'Quantity must be greater than 0!' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  const item = items.find(i => i._id === selectedItemId);
+                  if (!item || !value) return Promise.resolve();
+                  if (value > item.quantity) {
+                    return Promise.reject(new Error(`Cannot transfer more than available quantity (${item.quantity})!`));
+                  }
+                  return Promise.resolve();
+                },
+              }),
             ]}
           >
             <InputNumber min={1} placeholder="e.g., 5" style={{ width: '100%' }} />
           </Form.Item>
         </Form>
+      </Modal>
+      <Modal
+        title={`Items in ${selectedWarehouse}`}
+        open={isItemsModalVisible}
+        onCancel={handleItemsModalCancel}
+        footer={null}
+        width={800}
+      >
+        {warehouseItemsLoading && (
+          <Spin size="large" tip="Loading items..." style={{ display: 'block', textAlign: 'center', margin: '20px 0' }} />
+        )}
+        {warehouseItemsError && (
+          <div style={{ textAlign: 'center', color: 'red', margin: '20px 0' }}>
+            Error loading items: {warehouseItemsError.message}
+          </div>
+        )}
+        {!warehouseItemsLoading && !warehouseItemsError && (
+          <>
+            {warehouseItems.length === 0 ? (
+              <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                No items found in this warehouse.
+              </div>
+            ) : (
+              <ItemTable
+                items={warehouseItems}
+                columns={itemColumns}
+                onUpdate={canEdit ? handleUpdate : () => message.error('Access denied')}
+                onDelete={canEdit ? handleDelete : () => message.error('Access denied')}
+                onTransfer={canEdit ? handleTransfer : () => message.error('Access denied')}
+                canEdit={canEdit}
+              />
+            )}
+          </>
+        )}
       </Modal>
     </Layout>
   );
