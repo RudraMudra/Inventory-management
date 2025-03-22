@@ -1,10 +1,10 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const cors = require('cors');
-const connectDB = require('./config/db');
-const itemRoutes = require('./routes/itemRoutes');
-const authRoutes = require('./routes/authRoutes');
-const warehouseRoutes = require('./routes/warehouseRoutes');
+const connectDB = require('../config/db');
+const itemRoutes = require('../routes/itemRoutes');
+const authRoutes = require('../routes/authRoutes');
+const warehouseRoutes = require('../routes/warehouseRoutes');
 
 require('dotenv').config();
 
