@@ -1,10 +1,10 @@
 import React from 'react';
 import { Modal, Form, Input } from 'antd';
 
-const WarehouseModal = ({ isVisible, onOk, onCancel, warehouseForm }) => {
+const WarehouseModal = ({ isVisible, onOk, onCancel, warehouseForm, title }) => {
   return (
     <Modal
-      title={warehouseForm.getFieldValue('_id') ? 'Edit Warehouse' : 'Add Warehouse'}
+      title={title} // Use the title prop passed from App.js
       open={isVisible}
       onOk={onOk}
       onCancel={onCancel}

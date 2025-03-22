@@ -35,6 +35,7 @@ function App() {
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
   const [warehouseForm] = Form.useForm();
   const [transferForm] = Form.useForm();
+  const [warehouseModalTitle, setWarehouseModalTitle] = useState('Add Warehouse'); // New state for modal title
 
   // Authentication
   const { isAuthenticated, userRole, handleLogin, handleLogout } = useAuth();
@@ -175,8 +176,10 @@ function App() {
   const showWarehouseModal = (record = null) => {
     if (record) {
       warehouseForm.setFieldsValue(record);
+      setWarehouseModalTitle('Edit Warehouse');
     } else {
       warehouseForm.resetFields();
+      setWarehouseModalTitle('Add Warehouse');
     }
     setIsWarehouseModalVisible(true);
   };
@@ -200,7 +203,6 @@ function App() {
       case '2': setView('bar'); break;
       case '3': setView('pie'); break;
       case '4': setView('warehouses'); break;
-      // case '5': handleExportCSV(apiUrl); break;
       case '5': toggleTheme(); break;
       case '6': handleLogout(); break;
       default: break;
@@ -313,6 +315,15 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
+  const menuItems = [
+    { key: '1', icon: <StockOutlined />, label: 'Inventory' },
+    { key: '2', icon: <BarChartOutlined />, label: 'Bar Chart' },
+    { key: '3', icon: <PieChartOutlined />, label: 'Pie Chart' },
+    { key: '4', icon: <HomeOutlined />, label: 'Warehouses' },
+    { key: '5', icon: <BulbOutlined />, label: theme === 'light' ? 'Dark Mode' : 'Light Mode' },
+    { key: '6', icon: <LogoutOutlined />, label: 'Logout' },
+  ];
+
   return (
     <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
       <Sider
@@ -332,16 +343,8 @@ function App() {
           defaultSelectedKeys={['1']}
           onClick={handleMenuClick}
           style={{ background: themeStyles[theme].sider }}
-        >
-          <Menu.Item key="1" icon={<StockOutlined />}>Inventory</Menu.Item>
-          <Menu.Item key="2" icon={<BarChartOutlined />}>Bar Chart</Menu.Item>
-          <Menu.Item key="3" icon={<PieChartOutlined />}>Pie Chart</Menu.Item>
-          <Menu.Item key="4" icon={<HomeOutlined />}>Warehouses</Menu.Item>
-          <Menu.Item key="5" icon={<BulbOutlined />}>
-            {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-          </Menu.Item>
-          <Menu.Item key="6" icon={<LogoutOutlined />}>Logout</Menu.Item>
-        </Menu>
+          items={menuItems}
+        />
       </Sider>
       <Layout>
         <Header
@@ -520,6 +523,7 @@ function App() {
         onOk={handleWarehouseOk}
         onCancel={handleWarehouseCancel}
         warehouseForm={warehouseForm}
+        title={warehouseModalTitle} // Pass the title as a prop
       />
       <TransferModal
         isVisible={isTransferModalVisible}
