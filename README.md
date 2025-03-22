@@ -3,7 +3,7 @@
 StockFlow is a full-stack inventory management web application designed to streamline stock tracking, warehouse management, and data visualization for small to medium-sized businesses. It features role-based access control, a responsive UI, and efficient data management.
 
 ## Features
-- **Role-Based Access Control**: Supports three user roles (admin, manager, viewer) for secure access.
+- **Role-Based Access Control**: Supports three user roles (admin, viewer) for secure access.
 - **Responsive UI**: Built with Ant Design, featuring modals, dynamic tables, and a clean design.
 - **Inventory Management**: Perform CRUD operations on items, transfer items between warehouses, and receive low stock alerts.
 - **Data Export**: Export inventory data as CSV files for reporting.
