@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space } from 'antd';
-import { StockOutlined, BarChartOutlined, PieChartOutlined, BulbOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined } from '@ant-design/icons';
+import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space, Avatar, Dropdown } from 'antd'; // Added Avatar
+import { StockOutlined, BarChartOutlined, PieChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined, UserOutlined, DownOutlined } from '@ant-design/icons'; // Added UserOutlined
 import ItemForm from './components/ItemForm';
 import ItemTable from './components/ItemTable';
 import ItemChart from './components/ItemChart';
@@ -22,7 +22,7 @@ import './App.css';
 import axios from 'axios';
 
 const { Header, Content, Sider } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography; // Added Text
 
 function App() {
   const [view, setView] = useState('table');
@@ -35,7 +35,7 @@ function App() {
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
   const [warehouseForm] = Form.useForm();
   const [transferForm] = Form.useForm();
-  const [warehouseModalTitle, setWarehouseModalTitle] = useState('Add Warehouse'); // New state for modal title
+  const [warehouseModalTitle, setWarehouseModalTitle] = useState('Add Warehouse');
 
   // Authentication
   const { isAuthenticated, userRole, handleLogin, handleLogout } = useAuth();
@@ -128,11 +128,9 @@ function App() {
   }, [addMutation, updateMutation, deleteMutation, logMutation]);
 
   const handleTransfer = useCallback((itemId) => {
-    const item = itemsData?.items.find(i => i._id === itemId);
     setSelectedItemId(itemId);
     setIsTransferModalVisible(true);
-    transferForm.setFieldsValue({ fromWarehouse: item?.warehouse });
-  }, [itemsData, transferForm]);
+  }, []);
 
   const handleTransferOk = () => {
     transferForm.validateFields().then((values) => {
@@ -243,7 +241,6 @@ function App() {
             padding: 0,
             font: 'inherit',
             cursor: 'pointer',
-            textDecoration: 'underline',
           }}
           type="button"
           aria-label={`View items in ${text}`}
@@ -320,9 +317,21 @@ function App() {
     { key: '2', icon: <BarChartOutlined />, label: 'Bar Chart' },
     { key: '3', icon: <PieChartOutlined />, label: 'Pie Chart' },
     { key: '4', icon: <HomeOutlined />, label: 'Warehouses' },
-    { key: '5', icon: <BulbOutlined />, label: theme === 'light' ? 'Dark Mode' : 'Light Mode' },
-    { key: '6', icon: <LogoutOutlined />, label: 'Logout' },
   ];
+
+  // Capitalize the user role for display
+  const displayRole = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'User';
+
+  const profileMenu = (
+    <Menu onClick={handleMenuClick}>
+      <Menu.Item key="5">
+        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+      </Menu.Item>
+      <Menu.Item key="6">
+        < LogoutOutlined/> Logout 
+      </Menu.Item>
+    </Menu>
+  )
 
   return (
     <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
@@ -366,10 +375,19 @@ function App() {
           <Title level={2} style={{ color: themeStyles[theme].text, margin: 0, fontSize: '28px' }}>
             {view === 'table' ? 'Inventory Management' :
               view === 'bar' ? 'Quantity by Warehouse' :
-              view === 'pie' ? 'Stock Status Distribution' :
-              'Warehouse Management'}
+                view === 'pie' ? 'Stock Status Distribution' :
+                  'Warehouse Management'}
           </Title>
-          <div style={{ width: '24px' }} />
+          {/* Profile Display in Top-Right Corner */}
+          <Dropdown overlay={profileMenu} trigger={['click']}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <Avatar icon={<UserOutlined />} style={{ backgroundColor: theme === 'light' ? '#1890ff' : '#40a9ff' }} />
+              <Text style={{ color: themeStyles[theme].text, fontSize: '16px' }}>
+                {displayRole}
+              </Text>
+              <DownOutlined style={{ color: themeStyles[theme].text, fontSize: '12px' }} />
+            </div>
+          </Dropdown>
         </Header>
         <Content style={{ padding: '24px', minWidth: window.innerWidth < 768 ? '100%' : 'auto' }}>
           <div
@@ -392,6 +410,7 @@ function App() {
               <Dashboard
                 itemsData={itemsData}
                 userRole={userRole}
+                // userName={userName}
                 handleExportCSV={() => handleExportCSV(apiUrl)}
                 theme={themeStyles[theme]}
               />
@@ -523,7 +542,7 @@ function App() {
         onOk={handleWarehouseOk}
         onCancel={handleWarehouseCancel}
         warehouseForm={warehouseForm}
-        title={warehouseModalTitle} // Pass the title as a prop
+        title={warehouseModalTitle}
       />
       <TransferModal
         isVisible={isTransferModalVisible}
