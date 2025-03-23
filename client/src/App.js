@@ -322,16 +322,16 @@ function App() {
   // Capitalize the user role for display
   const displayRole = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'User';
 
-  const profileMenu = (
-    <Menu onClick={handleMenuClick}>
-      <Menu.Item key="5">
-        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-      </Menu.Item>
-      <Menu.Item key="6">
-        < LogoutOutlined/> Logout 
-      </Menu.Item>
-    </Menu>
-  )
+  const profileMenu = {
+    items: [
+      {
+        key: 'logout',
+        label: 'Logout',
+        icon: <LogoutOutlined />,
+        onClick: handleLogout,
+      },
+    ],
+  };
 
   return (
     <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
@@ -379,7 +379,7 @@ function App() {
                   'Warehouse Management'}
           </Title>
           {/* Profile Display in Top-Right Corner */}
-          <Dropdown overlay={profileMenu} trigger={['click']}>
+          <Dropdown menu={profileMenu} trigger={['click']}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} style={{ backgroundColor: theme === 'light' ? '#1890ff' : '#40a9ff' }} />
               <Text style={{ color: themeStyles[theme].text, fontSize: '16px' }}>
