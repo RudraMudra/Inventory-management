@@ -1,9 +1,9 @@
 import React from 'react';
 import { Table, Button, Tag } from 'antd';
-import { DeleteOutlined, MinusOutlined, SwapOutlined } from '@ant-design/icons';
+import { DeleteOutlined, MinusOutlined, SwapOutlined, EyeOutlined } from '@ant-design/icons'; // Added EyeOutlined
 import { motion } from 'framer-motion';
 
-const ItemTable = ({ items, onUpdate, onDelete, onSort, onTransfer, canEdit, columns, showTransfer = true }) => {
+const ItemTable = ({ items, onUpdate, onDelete, onSort, onTransfer, onView, canEdit, columns, showTransfer = true }) => {
   // Compute status for each item (only for items, not warehouses)
   const itemsWithStatus = items.map(item => {
     if (item.quantity !== undefined && item.lowStockThreshold !== undefined) {
@@ -42,18 +42,18 @@ const ItemTable = ({ items, onUpdate, onDelete, onSort, onTransfer, canEdit, col
       key: 'actions',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
-          {record.quantity !== undefined && canEdit && (
-            <Button
-              icon={<MinusOutlined />}
-              onClick={() => onUpdate(record._id, { ...record, quantity: record.quantity - 1 })}
-              style={{ background: '#52c41a', borderColor: '#52c41a', color: '#fff' }}
-              size="small"
-            >
-              Reduce
-            </Button>
-          )}
-          {canEdit && (
+          {canEdit ? (
             <>
+              {record.quantity !== undefined && (
+                <Button
+                  icon={<MinusOutlined />}
+                  onClick={() => onUpdate(record._id, { ...record, quantity: record.quantity - 1 })}
+                  style={{ background: '#52c41a', borderColor: '#52c41a', color: '#fff' }}
+                  size="small"
+                >
+                  Reduce
+                </Button>
+              )}
               <Button
                 icon={<DeleteOutlined />}
                 danger
@@ -68,12 +68,20 @@ const ItemTable = ({ items, onUpdate, onDelete, onSort, onTransfer, canEdit, col
                   onClick={() => onTransfer(record._id)}
                   style={{ background: '#1890ff', borderColor: '#1890ff', color: '#fff' }}
                   size="small"
-                  disabled={!canEdit}
                 >
                   Transfer
                 </Button>
               )}
             </>
+          ) : (
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => onView(record)}
+              style={{ background: '#faad14', borderColor: '#faad14', color: '#fff' }}
+              size="small"
+            >
+              View
+            </Button>
           )}
         </div>
       ),
@@ -90,7 +98,7 @@ const ItemTable = ({ items, onUpdate, onDelete, onSort, onTransfer, canEdit, col
         pagination={false}
         bordered
         size="middle"
-        rowClassName={(record, index) => index % 2 === 0 ? 'table-row-even' : 'table-row-odd'}
+        rowClassName={(record, index) => (index % 2 === 0 ? 'table-row-even' : 'table-row-odd')}
         components={{
           body: {
             row: ({ className, ...props }) => (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space, Avatar, Dropdown } from 'antd'; // Added Avatar
-import { StockOutlined, BarChartOutlined, PieChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined, UserOutlined, DownOutlined } from '@ant-design/icons'; // Added UserOutlined
+import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space, Avatar, Dropdown } from 'antd';
+import { StockOutlined, BarChartOutlined, PieChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined, UserOutlined, DownOutlined } from '@ant-design/icons';
 import ItemForm from './components/ItemForm';
 import ItemTable from './components/ItemTable';
 import ItemChart from './components/ItemChart';
@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import WarehouseModal from './components/WarehouseModal';
 import TransferModal from './components/TransferModal';
 import ItemsModal from './components/ItemsModal';
+import ItemDetailsModal from './components/ItemDetailsModal';
 import { useAuth } from './hooks/useAuth';
 import { useItems } from './hooks/useItems';
 import { useWarehouses } from './hooks/useWarehouses';
@@ -22,7 +23,7 @@ import './App.css';
 import axios from 'axios';
 
 const { Header, Content, Sider } = Layout;
-const { Title, Text } = Typography; // Added Text
+const { Title, Text } = Typography;
 
 function App() {
   const [view, setView] = useState('table');
@@ -31,8 +32,10 @@ function App() {
   const [isWarehouseModalVisible, setIsWarehouseModalVisible] = useState(false);
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
   const [isItemsModalVisible, setIsItemsModalVisible] = useState(false);
+  const [isItemDetailsModalVisible, setIsItemDetailsModalVisible] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [warehouseForm] = Form.useForm();
   const [transferForm] = Form.useForm();
   const [warehouseModalTitle, setWarehouseModalTitle] = useState('Add Warehouse');
@@ -165,6 +168,16 @@ function App() {
   const handleItemsModalCancel = () => {
     setIsItemsModalVisible(false);
     setSelectedWarehouse(null);
+  };
+
+  const handleViewItem = useCallback((item) => {
+    setSelectedItem(item);
+    setIsItemDetailsModalVisible(true);
+  }, []);
+
+  const handleItemDetailsModalCancel = () => {
+    setIsItemDetailsModalVisible(false);
+    setSelectedItem(null);
   };
 
   const handleAdd = useCallback((values) => addMutation.mutate(values), [addMutation]);
@@ -319,7 +332,6 @@ function App() {
     { key: '4', icon: <HomeOutlined />, label: 'Warehouses' },
   ];
 
-  // Capitalize the user role for display
   const displayRole = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'User';
 
   const profileMenu = {
@@ -378,7 +390,6 @@ function App() {
                 view === 'pie' ? 'Stock Status Distribution' :
                   'Warehouse Management'}
           </Title>
-          {/* Profile Display in Top-Right Corner */}
           <Dropdown menu={profileMenu} trigger={['click']}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} style={{ backgroundColor: theme === 'light' ? '#1890ff' : '#40a9ff' }} />
@@ -410,7 +421,6 @@ function App() {
               <Dashboard
                 itemsData={itemsData}
                 userRole={userRole}
-                // userName={userName}
                 handleExportCSV={() => handleExportCSV(apiUrl)}
                 theme={themeStyles[theme]}
               />
@@ -449,7 +459,9 @@ function App() {
                   onDelete={canEdit ? handleDelete : () => message.error('Access denied')}
                   onSort={handleSort}
                   onTransfer={canEdit ? handleTransfer : () => message.error('Access denied')}
+                  onView={handleViewItem}
                   canEdit={canEdit}
+                  warehouses={warehouses} // Pass warehouses to ItemTable
                 />
                 <Pagination
                   current={currentPage}
@@ -552,6 +564,7 @@ function App() {
         items={items}
         selectedItemId={selectedItemId}
         warehouses={warehouses}
+        isAuthenticated={isAuthenticated}
       />
       <ItemsModal
         isVisible={isItemsModalVisible}
@@ -565,6 +578,12 @@ function App() {
         handleUpdate={handleUpdate}
         handleDelete={handleDelete}
         handleTransfer={handleTransfer}
+      />
+      <ItemDetailsModal
+        isVisible={isItemDetailsModalVisible}
+        onCancel={handleItemDetailsModalCancel}
+        selectedItem={selectedItem}
+        warehouses={warehouses} // Pass warehouses to ItemDetailsModal
       />
     </Layout>
   );
