@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Item = require('../models/Item');
-const Log = require('../models/log'); // Assuming a Log model is created
+const Log = require('../models/Log'); // Assuming a Log model is created
 const createCsvWriter = require('csv-writer').createObjectCsvStringifier;
 
 const getItems = async (req, res) => {
@@ -162,31 +162,28 @@ const createLog = async (req, res) => {
   }
 };
 
+// server/controllers/itemController.js
 const transferItem = async (req, res) => {
   try {
     const { itemId, fromWarehouse, toWarehouse, quantity } = req.body;
     console.log('Transfer request:', { itemId, fromWarehouse, toWarehouse, quantity });
 
-    // Validate itemId
     if (!mongoose.Types.ObjectId.isValid(itemId)) {
       console.log('Invalid item ID:', itemId);
       return res.status(400).json({ message: 'Invalid item ID' });
     }
 
-    // Validate quantity
-    const parsedQuantity = parseFloat(quantity); // Use parseFloat to handle decimals
+    const parsedQuantity = parseFloat(quantity);
     if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
       console.log('Invalid quantity:', quantity);
       return res.status(400).json({ message: 'Quantity must be a positive number' });
     }
 
-    // Ensure quantity is an integer
     if (!Number.isInteger(parsedQuantity)) {
       console.log('Quantity must be an integer:', quantity);
       return res.status(400).json({ message: 'Quantity must be an integer' });
     }
 
-    // Validate warehouses
     if (!fromWarehouse || !toWarehouse) {
       console.log('Missing warehouse details:', { fromWarehouse, toWarehouse });
       return res.status(400).json({ message: 'Source and destination warehouses are required' });
@@ -197,7 +194,6 @@ const transferItem = async (req, res) => {
       return res.status(400).json({ message: 'Source and destination warehouses cannot be the same' });
     }
 
-    // Find the source item
     const item = await Item.findById(itemId);
     if (!item) {
       console.log('Item not found:', itemId);
@@ -214,20 +210,32 @@ const transferItem = async (req, res) => {
 
     // Update the source item
     item.quantity -= parsedQuantity;
-    await item.save();
+    if (item.quantity === 0) {
+      await Item.deleteOne({ _id: itemId });
+    } else {
+      await item.save();
+    }
     console.log('Updated source item:', item);
 
-    // Create the new item in the destination warehouse
-    const newItem = new Item({
-      name: item.name,
-      quantity: parsedQuantity,
-      warehouse: toWarehouse,
-      lowStockThreshold: item.lowStockThreshold,
-    });
-    await newItem.save();
-    console.log('Created new item:', newItem);
+    // Check if the item already exists in the destination warehouse
+    let newItem = await Item.findOne({ name: item.name, warehouse: toWarehouse });
+    if (newItem) {
+      // If it exists, update the quantity
+      newItem.quantity += parsedQuantity;
+      await newItem.save();
+      console.log('Updated existing item in destination:', newItem);
+    } else {
+      // Otherwise, create a new item
+      newItem = new Item({
+        name: item.name,
+        quantity: parsedQuantity,
+        warehouse: toWarehouse,
+        lowStockThreshold: item.lowStockThreshold,
+      });
+      await newItem.save();
+      console.log('Created new item:', newItem);
+    }
 
-    // Log the transfer action
     console.log('req.user:', req.user);
     await Log.create({
       action: 'transfer',
@@ -239,12 +247,11 @@ const transferItem = async (req, res) => {
     });
     console.log('Logged transfer action');
 
-    // Return the item name for better user feedback
     res.json({ message: 'Item transferred successfully', itemName: item.name });
   } catch (err) {
     console.error('Error in transferItem:', err);
     if (err.code === 11000) {
-      return res.status(400).json({ message: 'Duplicate item ID error during transfer' });
+      return res.status(400).json({ message: 'Duplicate item error in destination warehouse' });
     }
     res.status(500).json({ message: 'Failed to transfer item', error: err.message });
   }

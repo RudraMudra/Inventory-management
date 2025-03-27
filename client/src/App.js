@@ -1,47 +1,36 @@
+// client/src/App.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Typography, Pagination, message, Input, Menu, Button, Modal, Form, Space, Avatar, Dropdown } from 'antd';
-import { StockOutlined, BarChartOutlined, PieChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, HomeOutlined, UserOutlined, DownOutlined } from '@ant-design/icons';
-import ItemForm from './components/ItemForm';
-import ItemTable from './components/ItemTable';
-import ItemChart from './components/ItemChart';
+import { message } from 'antd';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import AppLayout from './components/AppLayout';
+import ContentView from './components/ContentView';
 import WarehouseModal from './components/WarehouseModal';
 import TransferModal from './components/TransferModal';
 import ItemsModal from './components/ItemsModal';
 import ItemDetailsModal from './components/ItemDetailsModal';
+import Forecasting from './components/Forecasting'; // Import the Forecasting component
 import { useAuth } from './hooks/useAuth';
 import { useItems } from './hooks/useItems';
 import { useWarehouses } from './hooks/useWarehouses';
 import { useWarehouseItems } from './hooks/useWarehouseItems';
 import { useCharts } from './hooks/useCharts';
 import { useMutations } from './hooks/useMutations';
-import { themeStyles } from './constants/themeStyles';
+import { useModals } from './hooks/useModals';
 import { itemsPerPage, apiUrl } from './constants/config';
-import { handleExportCSV } from './utils/exportCSV';
+import { itemColumns } from './constants/columns';
 import './App.css';
 import axios from 'axios';
-
-const { Header, Content, Sider } = Layout;
-const { Title, Text } = Typography;
 
 function App() {
   const [view, setView] = useState('table');
   const [theme, setTheme] = useState('light');
   const [collapsed, setCollapsed] = useState(false);
-  const [isWarehouseModalVisible, setIsWarehouseModalVisible] = useState(false);
-  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
-  const [isItemsModalVisible, setIsItemsModalVisible] = useState(false);
-  const [isItemDetailsModalVisible, setIsItemDetailsModalVisible] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState(null);
-  const [selectedWarehouse, setSelectedWarehouse] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [warehouseForm] = Form.useForm();
-  const [transferForm] = Form.useForm();
-  const [warehouseModalTitle, setWarehouseModalTitle] = useState('Add Warehouse');
 
   // Authentication
   const { isAuthenticated, userRole, handleLogin, handleLogout } = useAuth();
+
+  // Modals
+  const modals = useModals();
 
   // Items
   const {
@@ -68,8 +57,8 @@ function App() {
   // Warehouse Items
   const { warehouseItems, warehouseItemsLoading, warehouseItemsError } = useWarehouseItems(
     isAuthenticated,
-    selectedWarehouse,
-    isItemsModalVisible,
+    modals.selectedWarehouse,
+    modals.isItemsModalVisible,
     apiUrl
   );
 
@@ -130,98 +119,11 @@ function App() {
     };
   }, [addMutation, updateMutation, deleteMutation, logMutation]);
 
-  const handleTransfer = useCallback((itemId) => {
-    setSelectedItemId(itemId);
-    setIsTransferModalVisible(true);
-  }, []);
-
-  const handleTransferOk = () => {
-    transferForm.validateFields().then((values) => {
-      const { fromWarehouse, toWarehouse, quantity } = values;
-      if (quantity <= 0) {
-        message.error('Quantity must be greater than 0');
-        return;
-      }
-      transferMutation.mutate({
-        itemId: selectedItemId,
-        fromWarehouse,
-        toWarehouse,
-        quantity: Number(quantity),
-      });
-      setIsTransferModalVisible(false);
-      transferForm.resetFields();
-    }).catch((errorInfo) => {
-      console.log('Validation failed:', errorInfo);
-    });
-  };
-
-  const handleTransferCancel = () => {
-    setIsTransferModalVisible(false);
-    transferForm.resetFields();
-  };
-
-  const handleViewItems = (warehouseName) => {
-    setSelectedWarehouse(warehouseName);
-    setIsItemsModalVisible(true);
-  };
-
-  const handleItemsModalCancel = () => {
-    setIsItemsModalVisible(false);
-    setSelectedWarehouse(null);
-  };
-
-  const handleViewItem = useCallback((item) => {
-    setSelectedItem(item);
-    setIsItemDetailsModalVisible(true);
-  }, []);
-
-  const handleItemDetailsModalCancel = () => {
-    setIsItemDetailsModalVisible(false);
-    setSelectedItem(null);
-  };
-
   const handleAdd = useCallback((values) => addMutation.mutate(values), [addMutation]);
   const handleUpdate = useCallback((id, updatedItem) => updateMutation.mutate({ id, updatedItem }), [updateMutation]);
   const handleDelete = useCallback((id) => deleteMutation.mutate(id), [deleteMutation]);
 
-  const showWarehouseModal = (record = null) => {
-    if (record) {
-      warehouseForm.setFieldsValue(record);
-      setWarehouseModalTitle('Edit Warehouse');
-    } else {
-      warehouseForm.resetFields();
-      setWarehouseModalTitle('Add Warehouse');
-    }
-    setIsWarehouseModalVisible(true);
-  };
-
-  const handleWarehouseOk = () => {
-    warehouseForm.validateFields().then((values) => {
-      warehouseMutation.mutate(values);
-      setIsWarehouseModalVisible(false);
-      warehouseForm.resetFields();
-    });
-  };
-
-  const handleWarehouseCancel = () => {
-    setIsWarehouseModalVisible(false);
-    warehouseForm.resetFields();
-  };
-
-  const handleMenuClick = (e) => {
-    switch (e.key) {
-      case '1': setView('table'); break;
-      case '2': setView('bar'); break;
-      case '3': setView('pie'); break;
-      case '4': setView('warehouses'); break;
-      case '5': toggleTheme(); break;
-      case '6': handleLogout(); break;
-      default: break;
-    }
-  };
-
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
-  const toggleCollapse = () => setCollapsed(!collapsed);
 
   const canEdit = userRole === 'admin' || userRole === 'manager';
   const canViewCharts = userRole !== 'viewer';
@@ -230,346 +132,83 @@ function App() {
   const totalItems = itemsData?.totalItems || 0;
   const warehouses = warehousesData || [];
 
-  const warehousesWithQuantities = warehouses.map(warehouse => {
-    const quantityData = warehouseQuantities.find(q => q.warehouse.toLowerCase() === warehouse.name.toLowerCase()) || { totalQuantity: 0 };
-    return {
-      ...warehouse,
-      totalQuantity: quantityData.totalQuantity || 0,
-    };
-  });
-
-  const warehouseColumns = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      width: '25%',
-      render: (text) => (
-        <button
-          onClick={() => handleViewItems(text)}
-          style={{
-            color: themeStyles[theme].text,
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            font: 'inherit',
-            cursor: 'pointer',
-          }}
-          type="button"
-          aria-label={`View items in ${text}`}
-        >
-          {text}
-        </button>
-      ),
-    },
-    { title: 'Location', dataIndex: 'location', key: 'location', width: '25%' },
-    {
-      title: 'Total Quantity',
-      dataIndex: 'totalQuantity',
-      key: 'totalQuantity',
-      sorter: (a, b) => a.totalQuantity - b.totalQuantity,
-      width: '20%',
-    },
-    { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', render: (text) => new Date(text).toLocaleString(), width: '20%' },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space size="middle">
-          {userRole === 'admin' && (
-            <>
-              <Button onClick={() => showWarehouseModal(record)}>Edit</Button>
-              <Button
-                danger
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Are you sure you want to delete this warehouse?',
-                    content: `This will delete the warehouse "${record.name}".`,
-                    onOk: () => deleteWarehouseMutation.mutate(record._id),
-                    okText: 'Yes',
-                    cancelText: 'No',
-                  });
-                }}
-              >
-                Delete
-              </Button>
-            </>
-          )}
-        </Space>
-      ),
-      width: '30%',
-    },
-  ];
-
-  const itemColumns = [
-    { title: 'Name', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', sorter: (a, b) => a.quantity - b.quantity },
-    { title: 'Low Stock Threshold', dataIndex: 'lowStockThreshold', key: 'lowStockThreshold' },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (_, record) => {
-        const isLowStock = record.quantity <= record.lowStockThreshold;
-        return (
-          <span style={{ color: isLowStock ? 'red' : 'green' }}>
-            {isLowStock ? 'Low Stock' : 'In Stock'}
-          </span>
-        );
-      },
-      sorter: (a, b) => (a.quantity <= a.lowStockThreshold ? -1 : 1) - (b.quantity <= b.lowStockThreshold ? -1 : 1),
-    },
-  ];
-
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
 
-  const menuItems = [
-    { key: '1', icon: <StockOutlined />, label: 'Inventory' },
-    { key: '2', icon: <BarChartOutlined />, label: 'Bar Chart' },
-    { key: '3', icon: <PieChartOutlined />, label: 'Pie Chart' },
-    { key: '4', icon: <HomeOutlined />, label: 'Warehouses' },
-  ];
-
-  const displayRole = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'User';
-
-  const profileMenu = {
-    items: [
-      {
-        key: 'logout',
-        label: 'Logout',
-        icon: <LogoutOutlined />,
-        onClick: handleLogout,
-      },
-    ],
-  };
-
   return (
-    <Layout style={{ minHeight: '100vh', background: themeStyles[theme].background }}>
-      <Sider
-        width={200}
-        collapsed={collapsed || window.innerWidth < 768}
-        collapsible
-        trigger={null}
-        style={{ background: themeStyles[theme].sider }}
-      >
-        <div style={{ padding: collapsed ? '16px 8px' : '16px', textAlign: 'center' }}>
-          <StockOutlined style={{ color: themeStyles[theme].text, fontSize: '40px' }} />
-          {!collapsed && <Title level={3} style={{ color: themeStyles[theme].text, margin: '8px 0 0', fontSize: '24px' }}>StockFlow</Title>}
-        </div>
-        <Menu
-          theme={theme === 'light' ? 'light' : 'dark'}
-          mode="inline"
-          defaultSelectedKeys={['1']}
-          onClick={handleMenuClick}
-          style={{ background: themeStyles[theme].sider }}
-          items={menuItems}
-        />
-      </Sider>
-      <Layout>
-        <Header
-          style={{
-            background: themeStyles[theme].header,
-            padding: '0 24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={toggleCollapse}
-            style={{ fontSize: '16px', color: themeStyles[theme].text, display: window.innerWidth >= 768 ? 'block' : 'none' }}
-          />
-          <Title level={2} style={{ color: themeStyles[theme].text, margin: 0, fontSize: '28px' }}>
-            {view === 'table' ? 'Inventory Management' :
-              view === 'bar' ? 'Quantity by Warehouse' :
-                view === 'pie' ? 'Stock Status Distribution' :
-                  'Warehouse Management'}
-          </Title>
-          <Dropdown menu={profileMenu} trigger={['click']}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} style={{ backgroundColor: theme === 'light' ? '#1890ff' : '#40a9ff' }} />
-              <Text style={{ color: themeStyles[theme].text, fontSize: '16px' }}>
-                {displayRole}
-              </Text>
-              <DownOutlined style={{ color: themeStyles[theme].text, fontSize: '12px' }} />
-            </div>
-          </Dropdown>
-        </Header>
-        <Content style={{ padding: '24px', minWidth: window.innerWidth < 768 ? '100%' : 'auto' }}>
-          <div
-            style={{
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              background: themeStyles[theme].card,
-              width: '100%',
-              maxWidth: window.innerWidth < 768 ? '100%' : '1200px',
-              margin: '0 auto',
-              padding: '24px',
-            }}
-          >
-            {isLoading && (
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-                Loading inventory data...
-              </div>
-            )}
-            {isAuthenticated && !isLoading && view === 'table' && (
-              <Dashboard
-                itemsData={itemsData}
-                userRole={userRole}
-                handleExportCSV={() => handleExportCSV(apiUrl)}
-                theme={themeStyles[theme]}
-              />
-            )}
-            {view === 'table' && (
-              <>
-                {canEdit && <ItemForm onSubmit={handleAdd} style={{ marginBottom: '32px', display: window.innerWidth < 768 ? 'block' : 'flex', gap: '16px' }} />}
-                <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  <Input
-                    placeholder="Search by name, warehouse, or 'low stock'"
-                    value={localSearchTerm}
-                    onChange={handleSearchChange}
-                    className={theme === 'dark' ? 'ant-input-dark' : ''}
-                    style={{ width: '200px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-                  />
-                  <Input
-                    name="minQuantity"
-                    placeholder="Min Quantity"
-                    value={filters.minQuantity}
-                    onChange={handleFilterChange}
-                    style={{ width: '150px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-                    disabled={!canEdit}
-                  />
-                  <Input
-                    name="maxQuantity"
-                    placeholder="Max Quantity"
-                    value={filters.maxQuantity}
-                    onChange={handleFilterChange}
-                    style={{ width: '150px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-                    disabled={!canEdit}
-                  />
-                </div>
-                <ItemTable
-                  items={items}
-                  onUpdate={canEdit ? handleUpdate : () => message.error('Access denied')}
-                  onDelete={canEdit ? handleDelete : () => message.error('Access denied')}
-                  onSort={handleSort}
-                  onTransfer={canEdit ? handleTransfer : () => message.error('Access denied')}
-                  onView={handleViewItem}
-                  canEdit={canEdit}
-                  warehouses={warehouses} // Pass warehouses to ItemTable
-                />
-                <Pagination
-                  current={currentPage}
-                  total={totalItems}
-                  pageSize={itemsPerPage}
-                  onChange={handlePageChange}
-                  style={{ marginTop: '32px', textAlign: 'right', padding: '16px 0' }}
-                  showSizeChanger={false}
-                  showQuickJumper
-                  showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
-                />
-              </>
-            )}
-            {view === 'bar' && canViewCharts && (
-              <>
-                {barLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading bar chart...</div>}
-                {barError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading bar chart: {barError.message}</div>}
-                {!barLoading && !barError && <ItemChart type="bar" barData={barData} pieData={{}} />}
-              </>
-            )}
-            {view === 'pie' && canViewCharts && (
-              <>
-                {pieLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading pie chart...</div>}
-                {pieError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading pie chart: {pieError.message}</div>}
-                {!pieLoading && !pieError && <ItemChart type="pie" barData={{}} pieData={pieData} />}
-              </>
-            )}
-            {view === 'warehouses' && (
-              <>
-                {warehousesLoading && (
-                  <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>
-                    Loading warehouses...
-                  </div>
-                )}
-                {warehouseQuantitiesLoading && (
-                  <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>
-                    Loading warehouse quantities...
-                  </div>
-                )}
-                {warehouseQuantitiesError && (
-                  <div style={{ textAlign: 'center', color: 'red', margin: '20px 0' }}>
-                    Error loading warehouse quantities: {warehouseQuantitiesError.message}
-                  </div>
-                )}
-                {!warehousesLoading && (
-                  <>
-                    <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {userRole === 'admin' && (
-                        <Button
-                          type="primary"
-                          onClick={() => showWarehouseModal()}
-                          style={{ marginBottom: '16px' }}
-                        >
-                          Add Warehouse
-                        </Button>
-                      )}
-                      <Input
-                        placeholder="Search by name"
-                        value={localSearchTerm}
-                        onChange={handleSearchChange}
-                        className={theme === 'dark' ? 'ant-input-dark' : ''}
-                        style={{ width: '200px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-                      />
-                    </div>
-                    {warehouseQuantities.length === 0 && (
-                      <div style={{ textAlign: 'center', color: themeStyles[theme].text, margin: '20px 0' }}>
-                        No items found in any warehouse.
-                      </div>
-                    )}
-                    <ItemTable
-                      items={warehousesWithQuantities.filter(warehouse => warehouse.name.toLowerCase().includes(localSearchTerm.toLowerCase()))}
-                      columns={warehouseColumns}
-                      onUpdate={userRole === 'admin' ? (id, updatedItem) => showWarehouseModal(updatedItem) : () => message.error('Access denied')}
-                      onDelete={userRole === 'admin' ? (id) => deleteWarehouseMutation.mutate(id) : () => message.error('Access denied')}
-                      canEdit={userRole === 'admin'}
-                      showTransfer={false}
-                    />
-                  </>
-                )}
-              </>
-            )}
-            {!canViewCharts && view !== 'table' && view !== 'warehouses' && (
-              <div style={{ textAlign: 'center', color: themeStyles[theme].text }}>Access denied to charts</div>
-            )}
-          </div>
-        </Content>
-      </Layout>
+    <AppLayout
+      theme={theme}
+      collapsed={collapsed}
+      setCollapsed={setCollapsed}
+      setView={setView}
+      handleLogout={handleLogout}
+      userRole={userRole}
+      view={view}
+      toggleTheme={toggleTheme}
+    >
+      <ContentView
+        view={view}
+        theme={theme}
+        isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
+        userRole={userRole}
+        itemsData={itemsData}
+        items={items}
+        totalItems={totalItems}
+        currentPage={currentPage}
+        localSearchTerm={localSearchTerm}
+        filters={filters}
+        handleSearchChange={handleSearchChange}
+        handleFilterChange={handleFilterChange}
+        handlePageChange={handlePageChange}
+        handleSort={handleSort}
+        handleAdd={handleAdd}
+        handleUpdate={handleUpdate}
+        handleDelete={handleDelete}
+        handleTransfer={modals.handleTransfer}
+        handleViewItem={modals.handleViewItem}
+        canEdit={canEdit}
+        canViewCharts={canViewCharts}
+        barData={barData}
+        barLoading={barLoading}
+        barError={barError}
+        pieData={pieData}
+        pieLoading={pieLoading}
+        pieError={pieError}
+        warehouses={warehouses}
+        warehousesLoading={warehousesLoading}
+        warehouseQuantities={warehouseQuantities}
+        warehouseQuantitiesLoading={warehouseQuantitiesLoading}
+        warehouseQuantitiesError={warehouseQuantitiesError}
+        showWarehouseModal={modals.showWarehouseModal}
+        deleteWarehouseMutation={deleteWarehouseMutation}
+        handleViewItems={modals.handleViewItems}
+        apiUrl={apiUrl}
+        // Pass props for the Forecasting component
+        ForecastingComponent={Forecasting} // Pass the component itself
+      />
       <WarehouseModal
-        isVisible={isWarehouseModalVisible}
-        onOk={handleWarehouseOk}
-        onCancel={handleWarehouseCancel}
-        warehouseForm={warehouseForm}
-        title={warehouseModalTitle}
+        isVisible={modals.isWarehouseModalVisible}
+        onOk={() => modals.handleWarehouseOk(warehouseMutation)}
+        onCancel={modals.handleWarehouseCancel}
+        warehouseForm={modals.warehouseForm}
+        title={modals.warehouseModalTitle}
       />
       <TransferModal
-        isVisible={isTransferModalVisible}
-        onOk={handleTransferOk}
-        onCancel={handleTransferCancel}
-        transferForm={transferForm}
+        isVisible={modals.isTransferModalVisible}
+        onOk={() => modals.handleTransferOk(transferMutation)}
+        onCancel={modals.handleTransferCancel}
+        transferForm={modals.transferForm}
         items={items}
-        selectedItemId={selectedItemId}
+        selectedItemId={modals.selectedItemId}
         warehouses={warehouses}
         isAuthenticated={isAuthenticated}
       />
       <ItemsModal
-        isVisible={isItemsModalVisible}
-        onCancel={handleItemsModalCancel}
-        selectedWarehouse={selectedWarehouse}
+        isVisible={modals.isItemsModalVisible}
+        onCancel={modals.handleItemsModalCancel}
+        selectedWarehouse={modals.selectedWarehouse}
         warehouseItems={warehouseItems}
         warehouseItemsLoading={warehouseItemsLoading}
         warehouseItemsError={warehouseItemsError}
@@ -577,15 +216,15 @@ function App() {
         canEdit={canEdit}
         handleUpdate={handleUpdate}
         handleDelete={handleDelete}
-        handleTransfer={handleTransfer}
+        handleTransfer={modals.handleTransfer}
       />
       <ItemDetailsModal
-        isVisible={isItemDetailsModalVisible}
-        onCancel={handleItemDetailsModalCancel}
-        selectedItem={selectedItem}
-        warehouses={warehouses} // Pass warehouses to ItemDetailsModal
+        isVisible={modals.isItemDetailsModalVisible}
+        onCancel={modals.handleItemDetailsModalCancel}
+        selectedItem={modals.selectedItem}
+        warehouses={warehouses}
       />
-    </Layout>
+    </AppLayout>
   );
 }
 
