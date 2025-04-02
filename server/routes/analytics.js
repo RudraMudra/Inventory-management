@@ -1,7 +1,7 @@
 // routes/analytics.js
 const express = require('express');
 const router = express.Router();
-const Log = require('../models/Log'); // Use the Log model instead of ActionLog
+const Log = require('../models/Log');
 const StockHistory = require('../models/StockHistory');
 const Item = require('../models/Item');
 const Warehouse = require('../models/Warehouse');
