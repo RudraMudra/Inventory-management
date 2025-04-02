@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const warehouseRoutes = require('./routes/warehouseRoutes');
 const forecastRoutes = require('./routes/forecastRoutes');
 const reorderRoutes = require('./routes/reorderRoutes');
+const analyticsRoutes = require('./routes/analytics');
 
 require('dotenv').config();
 
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/forecast', forecastRoutes);
 app.use('/api/reorder', reorderRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

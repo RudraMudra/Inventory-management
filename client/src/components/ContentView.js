@@ -1,6 +1,6 @@
-// client/src/components/ContentView.js
 import React from 'react';
-import { Input, Button, Pagination, message } from 'antd';
+import { Input, Button, Pagination, message, Space } from 'antd';
+import { SearchOutlined, ClearOutlined } from '@ant-design/icons'; // Added ClearOutlined for the clear button
 import ItemForm from './ItemForm';
 import ItemTable from './ItemTable';
 import ItemChart from './ItemChart';
@@ -10,6 +10,7 @@ import { themeStyles } from '../constants/themeStyles';
 import { itemsPerPage } from '../constants/config';
 import { handleExportCSV } from '../utils/exportCSV';
 import { warehouseColumns } from '../constants/columns';
+import Analytics from './Analytics';
 
 const ContentView = ({
   view,
@@ -49,7 +50,7 @@ const ContentView = ({
   deleteWarehouseMutation,
   handleViewItems,
   apiUrl,
-  ForecastingComponent, // Receive the Forecasting component as a prop
+  ForecastingComponent,
 }) => {
   const warehousesWithQuantities = warehouses.map(warehouse => {
     const quantityData = warehouseQuantities.find(q => q.warehouse.toLowerCase() === warehouse.name.toLowerCase()) || { totalQuantity: 0 };
@@ -59,7 +60,6 @@ const ContentView = ({
     };
   });
 
-  // Call warehouseColumns with the required arguments to get the array of columns
   const computedWarehouseColumns = warehouseColumns({
     userRole,
     showWarehouseModal,
@@ -68,6 +68,13 @@ const ContentView = ({
     themeStyles,
     theme,
   });
+
+  // Function to clear search and filters
+  const handleClearFilters = () => {
+    handleSearchChange({ target: { value: '' } }); // Clear search term
+    handleFilterChange({ target: { name: 'minQuantity', value: '' } }); // Clear min quantity
+    handleFilterChange({ target: { name: 'maxQuantity', value: '' } }); // Clear max quantity
+  };
 
   return (
     <div
@@ -98,31 +105,101 @@ const ContentView = ({
       )}
       {view === 'table' && (
         <>
-          {canEdit && <ItemForm onSubmit={handleAdd} style={{ marginBottom: '32px', display: window.innerWidth < 768 ? 'block' : 'flex', gap: '16px' }} />}
-          <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <Input
-              placeholder="Search by name, warehouse, or 'low stock'"
-              value={localSearchTerm}
-              onChange={handleSearchChange}
-              className={theme === 'dark' ? 'ant-input-dark' : ''}
-              style={{ width: '200px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
+          {canEdit && (
+            <ItemForm
+              onSubmit={handleAdd}
+              style={{ marginBottom: '32px', display: window.innerWidth < 768 ? 'block' : 'flex', gap: '16px' }}
             />
-            <Input
-              name="minQuantity"
-              placeholder="Min Quantity"
-              value={filters.minQuantity}
-              onChange={handleFilterChange}
-              style={{ width: '150px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-              disabled={!canEdit}
-            />
-            <Input
-              name="maxQuantity"
-              placeholder="Max Quantity"
-              value={filters.maxQuantity}
-              onChange={handleFilterChange}
-              style={{ width: '150px', borderRadius: '4px', background: themeStyles[theme].input, color: themeStyles[theme].text }}
-              disabled={!canEdit}
-            />
+          )}
+          <div
+            style={{
+              marginBottom: '24px',
+              background: themeStyles[theme].card,
+              padding: '16px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '16px',
+              alignItems: 'center',
+            }}
+          >
+            <Space wrap>
+              <Input
+                placeholder="Search by name, warehouse, or 'low stock'"
+                prefix={<SearchOutlined />}
+                value={localSearchTerm}
+                onChange={handleSearchChange}
+                className={theme === 'dark' ? 'ant-input-dark' : ''}
+                style={{
+                  width: '300px',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid #d9d9d9',
+                  background: themeStyles[theme].input,
+                  color: themeStyles[theme].text,
+                  fontSize: '14px',
+                }}
+                onFocus={(e) => (e.target.style.borderColor = '#1890ff')}
+                onBlur={(e) => (e.target.style.borderColor = '#d9d9d9')}
+              />
+              <Input
+                name="minQuantity"
+                placeholder="Min Quantity"
+                value={filters.minQuantity}
+                onChange={handleFilterChange}
+                type="number"
+                disabled={!canEdit}
+                style={{
+                  width: '150px',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid #d9d9d9',
+                  background: themeStyles[theme].input,
+                  color: themeStyles[theme].text,
+                  fontSize: '14px',
+                }}
+                onFocus={(e) => (e.target.style.borderColor = '#1890ff')}
+                onBlur={(e) => (e.target.style.borderColor = '#d9d9d9')}
+              />
+              <Input
+                name="maxQuantity"
+                placeholder="Max Quantity"
+                value={filters.maxQuantity}
+                onChange={handleFilterChange}
+                type="number"
+                disabled={!canEdit}
+                style={{
+                  width: '150px',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid #d9d9d9',
+                  background: themeStyles[theme].input,
+                  color: themeStyles[theme].text,
+                  fontSize: '14px',
+                }}
+                onFocus={(e) => (e.target.style.borderColor = '#1890ff')}
+                onBlur={(e) => (e.target.style.borderColor = '#d9d9d9')}
+              />
+              <Button
+                onClick={handleClearFilters}
+                icon={<ClearOutlined />}
+                style={{
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  fontSize: '14px',
+                  height: '40px',
+                  borderColor: '#d9d9d9',
+                  color: '#595959',
+                  background: themeStyles[theme].button,
+                  transition: 'all 0.3s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = theme === 'dark' ? '#444' : '#f5f5f5')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = themeStyles[theme].button)}
+              >
+                Clear Filters
+              </Button>
+            </Space>
           </div>
           <ItemTable
             items={items}
@@ -226,6 +303,14 @@ const ContentView = ({
         <ViewerForecasting
           theme={theme}
           isAuthenticated={isAuthenticated}
+          apiUrl={apiUrl}
+        />
+      )}
+      {view === 'analytics' && canViewCharts && (
+        <Analytics
+          theme={theme}
+          isAuthenticated={isAuthenticated}
+          userRole={userRole}
           apiUrl={apiUrl}
         />
       )}

@@ -2,19 +2,17 @@
 import React from 'react';
 import { Layout, Typography, Button, Menu, Avatar, Dropdown } from 'antd';
 import {
-  StockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
   DownOutlined,
-  LogoutOutlined,
-  DashboardOutlined,
-  UnorderedListOutlined,
-  LineChartOutlined,
-  HomeOutlined,
   AreaChartOutlined,
-  PieChartOutlined,
 } from '@ant-design/icons';
+import { IoIosAnalytics, IoIosLogOut } from "react-icons/io";
+import { MdDashboard, MdInventory  } from "react-icons/md";
+import { FaChartBar, FaWarehouse, FaChartPie   } from "react-icons/fa";
+import { FcAreaChart } from "react-icons/fc";
+import { SiShutterstock } from "react-icons/si";
 import { themeStyles } from '../constants/themeStyles';
 
 const { Header, Sider, Content } = Layout;
@@ -22,14 +20,16 @@ const { Title, Text } = Typography;
 
 // Define menu items directly in AppLayout.js
 const menuItems = [
-  { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
-  { key: 'table', icon: <UnorderedListOutlined />, label: 'Inventory Items' },
-  { key: 'bar', icon: <LineChartOutlined />, label: 'Quantity by Warehouse' },
-  { key: 'pie', icon: <PieChartOutlined />, label: 'Stock Status Distribution' },
-  { key: 'warehouses', icon: <HomeOutlined />, label: 'Warehouses' },
-  { key: 'forecasting', icon: <AreaChartOutlined />, label: 'Forecasting' },
+  { key: 'dashboard', icon: <MdDashboard/>, label: 'Dashboard' },
+  { key: 'table', icon: <MdInventory />, label: 'Inventory Items' },
+  { key: 'bar', icon: <FaChartBar />, label: 'Quantity' },
+  { key: 'pie', icon: <FaChartPie />, label: 'Stock Status' },
+  { key: 'warehouses', icon: <FaWarehouse />, label: 'Warehouses' },
+  { key: 'analytics', icon: <IoIosAnalytics />, label: 'Analytics' },
+  { key: 'forecasting', icon: <FcAreaChart />, label: 'Forecasting' },
   { key: 'viewerForecasting', icon: <AreaChartOutlined />, label: 'Viewer Forecasting' }, // New tab for viewers
 ];
+
 
 // Handle menu click events
 const handleMenuClick = (e, setView, toggleTheme, handleLogout) => {
@@ -62,7 +62,7 @@ const AppLayout = ({
       {
         key: 'logout',
         label: 'Logout',
-        icon: <LogoutOutlined />,
+        icon: <IoIosLogOut />,
         onClick: handleLogout,
       },
     ],
@@ -70,7 +70,7 @@ const AppLayout = ({
 
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter((item) => {
-    if (item.key === 'bar' || item.key === 'pie' || item.key === 'forecasting' || item.key === 'line' ) {
+    if (item.key === 'bar' || item.key === 'pie' || item.key === 'forecasting' || item.key === 'line' || item.key === 'analytics') {
       return userRole !== 'viewer'; // Hide charts and forecasting from viewers
     }
     if (item.key === 'viewerForecasting') {
@@ -92,6 +92,8 @@ const AppLayout = ({
         return 'Stock Status Distribution';
       case 'warehouses':
         return 'Warehouse Management';
+      case 'analytics':
+        return 'Analytics';
       case 'forecasting':
         return userRole === 'viewer' ? 'Inventory Forecasting (Viewer)' : 'Inventory Forecasting';
       default:
@@ -109,7 +111,7 @@ const AppLayout = ({
         style={{ background: themeStyles[theme].sider }}
       >
         <div style={{ padding: collapsed ? '16px 8px' : '16px', textAlign: 'center' }}>
-          <StockOutlined style={{ color: themeStyles[theme].text, fontSize: '40px' }} />
+          <SiShutterstock style={{ color: themeStyles[theme].text, fontSize: '40px' }} />
           {!collapsed && (
             <Title
               level={3}

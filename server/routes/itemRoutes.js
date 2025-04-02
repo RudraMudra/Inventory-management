@@ -1,5 +1,6 @@
 const express = require('express');
 const Item = require('../models/Item');
+const StockHistory = require('../models/StockHistory');
 const router = express.Router();
 const { getItems,
   createItem,
@@ -59,6 +60,54 @@ router.get('/by-warehouse/:warehouseName', authMiddleware, async (req, res) => {
     console.error('Error fetching items by warehouse:', err);
     res.status(500).json({ message: 'Failed to fetch items by warehouse', error: err.message });
   }
+});
+
+router.post('/transfer/:id', async (req, res) => {
+  const { id } = req.params;
+  const { toWarehouse } = req.body;
+
+  const item = await Item.findById(id);
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+
+  // Log the transfer action
+  await ActionLog.create({
+    actionType: 'transfer',
+    itemId: id,
+    userId: req.user ? req.user.id : null, // Assuming user is added to req by auth middleware
+    quantity: item.quantity,
+    fromWarehouse: item.warehouse,
+    toWarehouse,
+    timestamp: new Date(),
+  });
+
+  // Update the item
+  item.warehouse = toWarehouse;
+  await item.save();
+
+  res.json(item);
+});
+
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { quantity } = req.body;
+
+  const item = await Item.findById(id);
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+
+  // Log stock history
+  const status = quantity <= item.lowStockThreshold ? 'Low Stock' : 'In Stock';
+  await StockHistory.create({
+    itemId: id,
+    quantity,
+    status,
+    timestamp: new Date(),
+  });
+
+  // Update the item
+  item.quantity = quantity;
+  await item.save();
+
+  res.json(item);
 });
 
 
