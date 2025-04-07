@@ -3,6 +3,8 @@ import { Input, Button, message, Card, Row, Col, Checkbox, Switch } from 'antd';
 import { StockOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './login.css';
+// import { useNavigate } from 'react-router-dom';
+
 
 const Login = ({ onLogin }) => {
   const [theme, setTheme] = useState('light'); // Default to light theme if not provided
@@ -11,6 +13,7 @@ const Login = ({ onLogin }) => {
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('rememberedUsername'));
   const [loading, setLoading] = useState(false);
   const apiUrl = process.env.REACT_APP_API_URL;
+  // const navigate = useNavigate();
 
   const handleLogin = async () => {
     if (!username || !password) {
