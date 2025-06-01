@@ -180,7 +180,7 @@ Contributions are **welcome** (if you dare)! Here’s how to make your mark:
 2. Create a **new branch** (`git checkout -b feature/your-feature`).  
 3. Make changes and commit (`git commit -m "Add your feature"`).  
 4. Push to the branch (`git push origin feature/your-feature`).  
-5. Open a **pull request** and hope for the best.  
+5. Open a **pull request** and hope for the best.
 
 ---
 
