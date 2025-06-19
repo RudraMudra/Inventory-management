@@ -54,6 +54,53 @@ With an almost obsessive focus on **usability, security, and efficiency**, Stock
 
 ---
 
+## 🖼️ Screenshots (Because You Deserve Visual Proof)
+
+### 🔐 Login Page  
+Look at this beauty — where security and sarcasm meet.  
+![Login](client/public/screenshots/login.jpg)
+
+---
+
+### 🧠 Admin Dashboard  
+For those who like pretending to be in control.  
+![Dashboard](client/public/screenshots/Dashboard.jpg)
+
+---
+
+### 📊 Analytics Page (1)  
+Just some colorful charts to make you feel data-savvy.  
+![Analytics 1](client/public/screenshots/Inventory_Analytics_1.jpg)
+
+---
+
+### 📈 Analytics Page (2)  
+Still staring at trends. Still pretending to understand them.  
+![Analytics 2](client/public/screenshots/Inventory_Analytics_2.jpg)
+
+---
+
+### 🧙‍♂️ Inventory Forecasting (Admin)  
+Predict the future like a stock wizard.  
+![Forecasting](client/public/screenshots/Inventory_forecasting_admin.jpg)
+
+---
+
+### 🧍 Viewer Mode  
+Because sometimes, clicking through pretty charts is enough.  
+![Viewer](client/public/screenshots/inventory_viewer.jpg)
+
+---
+
+### 📊 Pie & Bar Charts  
+For when you need to impress people with colorful circles and rectangles.  
+**Bar Chart:**  
+![Bar Chart](client/public/screenshots/bar_chart.jpg)
+
+**Pie Chart:**  
+![Pie Chart](client/public/screenshots/pie_chart.jpg)
+
+
 ## 🚀 Getting Started (If You Dare)
 
 ### **Prerequisites**  
@@ -133,7 +180,7 @@ Contributions are **welcome** (if you dare)! Here’s how to make your mark:
 2. Create a **new branch** (`git checkout -b feature/your-feature`).  
 3. Make changes and commit (`git commit -m "Add your feature"`).  
 4. Push to the branch (`git push origin feature/your-feature`).  
-5. Open a **pull request** and hope for the best.  
+5. Open a **pull request** and hope for the best.
 
 ---
 
