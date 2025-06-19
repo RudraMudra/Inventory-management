@@ -3,7 +3,7 @@ import { Input, Button, message, Card, Row, Col, Checkbox, Switch } from 'antd';
 import { StockOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './login.css';
-// import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 
 const Login = ({ onLogin }) => {
@@ -13,7 +13,7 @@ const Login = ({ onLogin }) => {
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('rememberedUsername'));
   const [loading, setLoading] = useState(false);
   const apiUrl = process.env.REACT_APP_API_URL;
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -26,13 +26,15 @@ const Login = ({ onLogin }) => {
       const { token, role } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
+      localStorage.setItem('userName', username);
       if (rememberMe) {
         localStorage.setItem('rememberedUsername', username);
       } else {
         localStorage.removeItem('rememberedUsername');
       }
-      onLogin(role);
+      onLogin({ token, role, userName: username });
       message.success('Logged in successfully');
+      navigate('/dashboard'); // Redirect to dashboard after login
     } catch (err) {
       message.error('Login failed: ' + (err.response?.data?.message || err.message));
     } finally {

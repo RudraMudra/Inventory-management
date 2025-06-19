@@ -24,10 +24,14 @@ export const useAuth = () => {
     }
   }, []);
 
-  const handleLogin = (role) => {
+  const handleLogin = ({ token, role, userName }) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('role', role);
+    localStorage.setItem('userName', userName);
     setIsAuthenticated(true);
     setUserRole(role);
-    setUserName(localStorage.getItem('userName'));
+    setUserName(userName);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
 
   const handleLogout = () => {

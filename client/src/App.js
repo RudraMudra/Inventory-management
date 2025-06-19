@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { message } from 'antd';
 import Login from './components/Login';
 import AppLayout from './components/AppLayout';
@@ -131,107 +131,111 @@ function App() {
   const totalItems = itemsData?.totalItems || 0;
   const warehouses = warehousesData || [];
 
-  if (!isAuthenticated) {
-    return (
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          <Route path="/forgot-password" element={<ForgotPassword theme="light" />} />
-          <Route path="*" element={<Login onLogin={handleLogin} />} />
-        </Routes>
-      </Router>
-    );
-  }
-
   return (
     <Router>
-      <AppLayout
-        theme={theme}
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
-        setView={setView}
-        handleLogout={handleLogout}
-        userRole={userRole}
-        view={view}
-        toggleTheme={toggleTheme}
-      >
-        <ContentView
-          view={view}
-          theme={theme}
-          isAuthenticated={isAuthenticated}
-          isLoading={isLoading}
-          userRole={userRole}
-          itemsData={itemsData}
-          items={items}
-          totalItems={totalItems}
-          currentPage={currentPage}
-          localSearchTerm={localSearchTerm}
-          filters={filters}
-          handleSearchChange={handleSearchChange}
-          handleFilterChange={handleFilterChange}
-          handlePageChange={handlePageChange}
-          handleSort={handleSort}
-          handleAdd={handleAdd}
-          handleUpdate={handleUpdate}
-          handleDelete={handleDelete}
-          handleTransfer={modals.handleTransfer}
-          handleViewItem={modals.handleViewItem}
-          canEdit={canEdit}
-          canViewCharts={canViewCharts}
-          barData={barData}
-          barLoading={barLoading}
-          barError={barError}
-          pieData={pieData}
-          pieLoading={pieLoading}
-          pieError={pieError}
-          warehouses={warehouses}
-          warehousesLoading={warehousesLoading}
-          warehouseQuantities={warehouseQuantities}
-          warehouseQuantitiesLoading={warehouseQuantitiesLoading}
-          warehouseQuantitiesError={warehouseQuantitiesError}
-          showWarehouseModal={modals.showWarehouseModal}
-          deleteWarehouseMutation={deleteWarehouseMutation}
-          handleViewItems={modals.handleViewItems}
-          apiUrl={apiUrl}
-          ForecastingComponent={Forecasting}
-        />
-        <WarehouseModal
-          isVisible={modals.isWarehouseModalVisible}
-          onOk={() => modals.handleWarehouseOk(warehouseMutation)}
-          onCancel={modals.handleWarehouseCancel}
-          warehouseForm={modals.warehouseForm}
-          title={modals.warehouseModalTitle}
-        />
-        <TransferModal
-          isVisible={modals.isTransferModalVisible}
-          onOk={() => modals.handleTransferOk(transferMutation)}
-          onCancel={modals.handleTransferCancel}
-          transferForm={modals.transferForm}
-          items={items}
-          selectedItemId={modals.selectedItemId}
-          warehouses={warehouses}
-          isAuthenticated={isAuthenticated}
-        />
-        <ItemsModal
-          isVisible={modals.isItemsModalVisible}
-          onCancel={modals.handleItemsModalCancel}
-          selectedWarehouse={modals.selectedWarehouse}
-          warehouseItems={warehouseItems}
-          warehouseItemsLoading={warehouseItemsLoading}
-          warehouseItemsError={warehouseItemsError}
-          itemColumns={itemColumns}
-          canEdit={canEdit}
-          handleUpdate={handleUpdate}
-          handleDelete={handleDelete}
-          handleTransfer={modals.handleTransfer}
-        />
-        <ItemDetailsModal
-          isVisible={modals.isItemDetailsModalVisible}
-          onCancel={modals.handleItemDetailsModalCancel}
-          selectedItem={modals.selectedItem}
-          warehouses={warehouses}
-        />
-      </AppLayout>
+      <Routes>
+        {!isAuthenticated ? (
+          <>
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
+            <Route path="/forgot-password" element={<ForgotPassword theme="light" />} />
+            <Route path="*" element={<Navigate to="/login" />} />
+          </>
+        ) : (
+          <>
+            <Route path="/dashboard" element={
+              <AppLayout
+                theme={theme}
+                collapsed={collapsed}
+                setCollapsed={setCollapsed}
+                setView={setView}
+                handleLogout={handleLogout}
+                userRole={userRole}
+                view={view}
+                toggleTheme={toggleTheme}
+              >
+                <ContentView
+                  view={view}
+                  theme={theme}
+                  isAuthenticated={isAuthenticated}
+                  isLoading={isLoading}
+                  userRole={userRole}
+                  itemsData={itemsData}
+                  items={items}
+                  totalItems={totalItems}
+                  currentPage={currentPage}
+                  localSearchTerm={localSearchTerm}
+                  filters={filters}
+                  handleSearchChange={handleSearchChange}
+                  handleFilterChange={handleFilterChange}
+                  handlePageChange={handlePageChange}
+                  handleSort={handleSort}
+                  handleAdd={handleAdd}
+                  handleUpdate={handleUpdate}
+                  handleDelete={handleDelete}
+                  handleTransfer={modals.handleTransfer}
+                  handleViewItem={modals.handleViewItem}
+                  canEdit={canEdit}
+                  canViewCharts={canViewCharts}
+                  barData={barData}
+                  barLoading={barLoading}
+                  barError={barError}
+                  pieData={pieData}
+                  pieLoading={pieLoading}
+                  pieError={pieError}
+                  warehouses={warehouses}
+                  warehousesLoading={warehousesLoading}
+                  warehouseQuantities={warehouseQuantities}
+                  warehouseQuantitiesLoading={warehouseQuantitiesLoading}
+                  warehouseQuantitiesError={warehouseQuantitiesError}
+                  showWarehouseModal={modals.showWarehouseModal}
+                  deleteWarehouseMutation={deleteWarehouseMutation}
+                  handleViewItems={modals.handleViewItems}
+                  apiUrl={apiUrl}
+                  ForecastingComponent={Forecasting}
+                />
+                <WarehouseModal
+                  isVisible={modals.isWarehouseModalVisible}
+                  onOk={() => modals.handleWarehouseOk(warehouseMutation)}
+                  onCancel={modals.handleWarehouseCancel}
+                  warehouseForm={modals.warehouseForm}
+                  title={modals.warehouseModalTitle}
+                />
+                <TransferModal
+                  isVisible={modals.isTransferModalVisible}
+                  onOk={() => modals.handleTransferOk(transferMutation)}
+                  onCancel={modals.handleTransferCancel}
+                  transferForm={modals.transferForm}
+                  items={items}
+                  selectedItemId={modals.selectedItemId}
+                  warehouses={warehouses}
+                  isAuthenticated={isAuthenticated}
+                />
+                <ItemsModal
+                  isVisible={modals.isItemsModalVisible}
+                  onCancel={modals.handleItemsModalCancel}
+                  selectedWarehouse={modals.selectedWarehouse}
+                  warehouseItems={warehouseItems}
+                  warehouseItemsLoading={warehouseItemsLoading}
+                  warehouseItemsError={warehouseItemsError}
+                  itemColumns={itemColumns}
+                  canEdit={canEdit}
+                  handleUpdate={handleUpdate}
+                  handleDelete={handleDelete}
+                  handleTransfer={modals.handleTransfer}
+                />
+                <ItemDetailsModal
+                  isVisible={modals.isItemDetailsModalVisible}
+                  onCancel={modals.handleItemDetailsModalCancel}
+                  selectedItem={modals.selectedItem}
+                  warehouses={warehouses}
+                />
+              </AppLayout>
+            } />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="*" element={<Navigate to="/dashboard" />} />
+          </>
+        )}
+      </Routes>
     </Router>
   );
 }
