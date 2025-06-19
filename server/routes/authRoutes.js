@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
 
     // Use the comparePassword method to validate the password
     const isMatch = await user.comparePassword(password);
-    console.log('Password match:', isMatch);
+    // console.log('Password match:', isMatch);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
