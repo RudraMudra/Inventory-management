@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input, Button, Pagination, message, Space } from 'antd';
-import { SearchOutlined, ClearOutlined } from '@ant-design/icons'; // Added ClearOutlined for the clear button
+import { SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import ItemForm from './ItemForm';
 import ItemTable from './ItemTable';
 import ItemChart from './ItemChart';
@@ -52,6 +52,10 @@ const ContentView = ({
   apiUrl,
   ForecastingComponent,
 }) => {
+  // --- Add these states for chart filtering/navigation ---
+  const [chartFilter, setChartFilter] = useState({});
+  const [chartView, setChartView] = useState(view);
+
   const warehousesWithQuantities = warehouses.map(warehouse => {
     const quantityData = warehouseQuantities.find(q => q.warehouse.toLowerCase() === warehouse.name.toLowerCase()) || { totalQuantity: 0 };
     return {
@@ -71,9 +75,9 @@ const ContentView = ({
 
   // Function to clear search and filters
   const handleClearFilters = () => {
-    handleSearchChange({ target: { value: '' } }); // Clear search term
-    handleFilterChange({ target: { name: 'minQuantity', value: '' } }); // Clear min quantity
-    handleFilterChange({ target: { name: 'maxQuantity', value: '' } }); // Clear max quantity
+    handleSearchChange({ target: { value: '' } });
+    handleFilterChange({ target: { name: 'minQuantity', value: '' } });
+    handleFilterChange({ target: { name: 'maxQuantity', value: '' } });
   };
 
   return (
@@ -230,14 +234,32 @@ const ContentView = ({
         <>
           {barLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading bar chart...</div>}
           {barError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading bar chart: {barError.message}</div>}
-          {!barLoading && !barError && <ItemChart type="bar" barData={barData} pieData={{}} />}
+          {!barLoading && !barError && (
+            <ItemChart
+              type="bar"
+              barData={barData}
+              pieData={{}}
+              theme={theme}
+              setFilter={setChartFilter}
+              setView={setChartView}
+            />
+          )}
         </>
       )}
       {view === 'pie' && canViewCharts && (
         <>
           {pieLoading && <div style={{ display: 'block', textAlign: 'center', margin: '20px 0' }}>Loading pie chart...</div>}
           {pieError && <div style={{ textAlign: 'center', color: 'red' }}>Error loading pie chart: {pieError.message}</div>}
-          {!pieLoading && !pieError && <ItemChart type="pie" barData={{}} pieData={pieData} />}
+          {!pieLoading && !pieError && (
+            <ItemChart
+              type="pie"
+              barData={{}}
+              pieData={pieData}
+              theme={theme}
+              setFilter={setChartFilter}
+              setView={setChartView}
+            />
+          )}
         </>
       )}
       {view === 'warehouses' && (
