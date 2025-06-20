@@ -108,6 +108,9 @@ const ContentView = ({
           {canEdit && (
             <ItemForm
               onSubmit={handleAdd}
+              warehouseOptions={warehouses}
+              canAddWarehouse={userRole === 'admin'}
+              onAddWarehouse={showWarehouseModal}
               style={{ marginBottom: '32px', display: window.innerWidth < 768 ? 'block' : 'flex', gap: '16px' }}
             />
           )}

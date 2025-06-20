@@ -1,8 +1,8 @@
-import React from 'react';
-import { Form, Input, Button, InputNumber } from 'antd';
+// import React from 'react';
+import { Form, Input, Button, InputNumber, Select } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
-const ItemForm = ({ onSubmit }) => {
+const ItemForm = ({ onSubmit, warehouseOptions }) => {
   const [form] = Form.useForm();
 
   const handleFinish = (values) => {
@@ -75,17 +75,38 @@ const ItemForm = ({ onSubmit }) => {
           rules={[{ required: true, message: 'Please enter the warehouse' }]}
           style={{ flex: '1 1 150px' }}
         >
-          <Input
-            placeholder="Enter warehouse (e.g., WH1)"
+          <Select
+            loading={warehouseOptions.length === 0}
+            allowClear
+            placeholder="Select warehouse"
+            notFoundContent="No warehouses available"
             style={{
               borderRadius: '6px',
-              padding: '8px',
-              border: '1px solid #d9d9d9',
-              fontSize: '14px',
+              width: '100%',
             }}
-            onFocus={(e) => (e.target.style.borderColor = '#1890ff')}
-            onBlur={(e) => (e.target.style.borderColor = '#d9d9d9')}
-          />
+            showSearch
+            optionFilterProp="children"
+            aria-label='warehouse-select'
+          >
+            {warehouseOptions.map(wh => (
+              <Select.Option
+                key={wh._id}
+                value={wh.name}
+                disabled={wh.totalQuantity >= wh.capacity}
+              >
+                {wh.name} {wh.location ? `(${wh.location})` : ''} {wh.capacity ? `- Capacity: ${wh.capacity}` : ''}
+              </Select.Option>
+            ))}
+          </Select>
+          {/* {canAddWarehouse && (
+            <Button
+              type="dashed"
+              onClick={onAddWarehouse}
+              aria-label="Add new warehouse"
+            >
+              + Add
+            </Button>
+          )} */}
         </Form.Item>
 
         <Form.Item
