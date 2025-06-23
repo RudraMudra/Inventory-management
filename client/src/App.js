@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { message } from 'antd';
+import { message } from 'antd'; // Only import message, not Alert
 import Login from './components/Login';
 import AppLayout from './components/AppLayout';
 import ContentView from './components/ContentView';
@@ -71,21 +71,25 @@ function App() {
     logMutation,
   } = useMutations(apiUrl, view, itemsPerPage, currentPage, localSearchTerm, 'name', 'asc', filters);
 
-  // Low Stock Check
+  // Low Stock Check - Notification only
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const checkLowStock = async () => {
       try {
         const res = await axios.get(`${apiUrl}/items/low-stock-alert`);
-        if (res.data.length > 0) {
-          message.warning(`Low stock on: ${res.data.map(item => item.name).join(', ')}`, 5);
+        if (res.data && res.data.length > 0) {
+          message.warning(
+            `Low stock on: ${res.data.map(item => item.name).join(', ')}`,
+            5 // duration in seconds
+          );
         }
       } catch (err) {
         console.error('Low stock check failed:', err);
       }
     };
-    const interval = setInterval(checkLowStock, 300000);
+    checkLowStock(); // run once immediately
+    const interval = setInterval(checkLowStock, 300000); // check every 5 minutes
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 

@@ -145,7 +145,9 @@ const exportItems = async (req, res) => {
 
 const getLowStockAlert = async (req, res) => {
   try {
-    const lowStockItems = await Item.find({ quantity: { $lte: '$lowStockThreshold' } });
+    const lowStockItems = await Item.find({
+      $expr: { $lte: ['$quantity', '$lowStockThreshold'] },
+    });
     res.json(lowStockItems);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch low stock alert' });
